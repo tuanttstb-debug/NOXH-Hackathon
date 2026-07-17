@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NOXH Copilot — Preview Hiệu Ứng Tổng</title>
+<style>
+  :root{
+    --background: 224 41% 6%;
+    --foreground: 210 30% 96%;
+    --card: 222 35% 10%;
+    --card-foreground: 210 30% 96%;
+    --muted: 222 24% 14%;
+    --muted-foreground: 215 16% 65%;
+    --border: 222 22% 20%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 210 40% 98%;
+    --accent: 262 83% 68%;
+    --success: 152 55% 45%;
+    --success-foreground: 150 40% 97%;
+    --danger: 350 65% 58%;
+    --danger-foreground: 355 40% 97%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 30 40% 10%;
+    --radius: 16px;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
+    background-image:
+      radial-gradient(circle at 15% 0%, hsl(var(--primary) / 0.12), transparent 40%),
+      radial-gradient(circle at 85% 0%, hsl(var(--accent) / 0.10), transparent 40%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    padding-bottom: 80px;
+  }
+  .wrap{ max-width: 880px; margin: 0 auto; padding: 0 20px; }
+  .topbar{
+    position: sticky; top:0; z-index:20;
+    backdrop-filter: blur(10px);
+    background: hsl(var(--background) / 0.75);
+    border-bottom: 1px solid hsl(var(--border) / 0.6);
+    padding: 14px 0;
+  }
+  .topbar-inner{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap: wrap; }
+  .brand{ font-weight:700; font-size:14px; letter-spacing:0.2px; display:flex; align-items:center; gap:8px;}
+  .brand-dot{ width:8px; height:8px; border-radius:50%; background: hsl(var(--primary)); box-shadow: 0 0 0 4px hsl(var(--primary)/0.18);}
+  .btn{
+    appearance:none; border:1px solid hsl(var(--border)/0.7); background: hsl(var(--muted)/0.6);
+    color: hsl(var(--foreground)); font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;
+    transition: all .15s ease; font-weight:600;
+  }
+  .btn:hover{ border-color: hsl(var(--primary)/0.6); background: hsl(var(--primary)/0.14); }
+  .btn.primary{ background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent))); border:none; color:#fff; }
+  .btn.primary:hover{ filter: brightness(1.08); }
+
+  section{ padding: 56px 0 8px; }
+  .section-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:1.5px; color: hsl(var(--muted-foreground));
+    font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:8px;
+  }
+  .section-label::before{ content:""; width:16px; height:1px; background: hsl(var(--primary)); display:inline-block; }
+  h2{ font-size:22px; margin:0 0 6px; }
+  .sub{ color: hsl(var(--muted-foreground)); font-size:14px; margin:0 0 22px; max-width: 60ch; }
+
+  .card{
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+    padding: 22px;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{ padding: 64px 0 40px; text-align:center; }
+  .hero h1{
+    font-size: clamp(28px, 5vw, 44px);
+    line-height:1.15; margin: 0 0 14px; font-weight: 800;
+  }
+  .gradient-text{
+    background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+    -webkit-background-clip: text; background-clip:text; color:transparent;
+  }
+  .hero p{ color: hsl(var(--muted-foreground)); max-width: 52ch; margin: 0 auto; font-size:15px; }
+  .typing-line{
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px; color: hsl(var(--primary));
+    margin-top: 22px; min-height: 20px;
+  }
+  .caret{ display:inline-block; width:2px; height:14px; background: hsl(var(--primary)); margin-left:2px; vertical-align: -2px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink{ 50%{ opacity:0; } }
+
+  /* ---------- REASONING TRACE ---------- */
+  .trace-step{
+    display:flex; align-items:flex-start; gap:12px; padding:10px 0;
+    opacity:0; transform: translateY(6px);
+  }
+  .trace-step.show{ animation: stepIn .45s ease forwards; }
+  @keyframes stepIn{ to{ opacity:1; transform:none; } }
+  .trace-dot{
+    width:22px; height:22px; border-radius:50%; flex-shrink:0; margin-top:1px;
+    display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800;
+    background: hsl(var(--muted)); color: hsl(var(--muted-foreground));
+    border:1px solid hsl(var(--border));
+    transition: all .3s ease;
+  }
+  .trace-step.show .trace-dot{ background: hsl(var(--success)/0.18); color: hsl(var(--success)); border-color: hsl(var(--success)/0.4); }
+  .trace-step.active .trace-dot{
+    background: hsl(var(--primary)/0.18); color: hsl(var(--primary)); border-color: hsl(var(--primary)/0.5);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse{ 0%,100%{ box-shadow: 0 0 0 0 hsl(var(--primary)/0.35);} 50%{ box-shadow: 0 0 0 6px hsl(var(--primary)/0);} }
+  .trace-text{ font-size:13.5px; color: hsl(var(--foreground)/0.9); padding-top:2px; }
+  .trace-line{
+    position:absolute; left:10px; top:26px; bottom:-4px; width:1px; background: hsl(var(--border));
+  }
+  .trace-item{ position:relative; }
+
+  /* ---------- THRESHOLD BAR ---------- */
+  .thr-row{ display:flex; justify-content:space-between; font-size:12.5px; color: hsl(var(--muted-foreground)); margin-bottom:8px; }
+  .thr-track{ height:10px; border-radius:999px; background: hsl(var(--muted)); overflow:hidden; position:relative; }
+  .thr-fill{ height:100%; border-radius:999px; width:0%; background: linear-gradient(90deg, hsl(var(--success)), hsl(var(--primary))); transition: width 1.2s cubic-bezier(.22,1,.36,1); }
+  .thr-limit{ position:absolute; top:-4px; bottom:-4px; width:2px; background: hsl(var(--warning)); }
+  .thr-values{ display:flex; justify-content:space-between; margin-top:8px; font-size:12px; }
+  .thr-values b{ font-size:14px; }
+
+  /* ---------- TIMELINE CHIP ---------- */
+  .timeline{ display:flex; align-items:center; gap:0; margin: 18px 0 6px; }
+  .tl-node{ display:flex; flex-direction:column; align-items:center; flex:1; position:relative; }
+  .tl-dot{ width:12px; height:12px; border-radius:50%; background: hsl(var(--muted)); border:2px solid hsl(var(--border)); z-index:2; transition: all .4s ease; }
+  .tl-node.active .tl-dot{ background: hsl(var(--warning)); border-color: hsl(var(--warning)); box-shadow: 0 0 0 5px hsl(var(--warning)/0.18); }
+  .tl-node.past .tl-dot{ background: hsl(var(--success)); border-color: hsl(var(--success)); }
+  .tl-bar{ position:absolute; top:5px; left:50%; width:100%; height:2px; background: hsl(var(--border)); z-index:1; }
+  .tl-node.past .tl-bar{ background: hsl(var(--success)/0.5); }
+  .tl-node:last-child .tl-bar{ display:none; }
+  .tl-label{ font-size:11px; color: hsl(var(--muted-foreground)); margin-top:8px; text-align:center; }
+  .tl-node.active .tl-label{ color: hsl(var(--warning)); font-weight:700; }
+
+  /* ---------- RESULT CARD ---------- */
+  .result-tabs{ display:flex; gap:8px; margin-bottom:16px; }
+  .tab{
+    font-size:12.5px; padding:7px 12px; border-radius:999px; cursor:pointer; border:1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground)); background:transparent; font-weight:600;
+  }
+  .tab.active[data-v="eligible"]{ background: hsl(var(--success)/0.16); color: hsl(var(--success)); border-color: hsl(var(--success)/0.5); }
+  .tab.active[data-v="ineligible"]{ background: hsl(var(--danger)/0.16); color: hsl(var(--danger)); border-color: hsl(var(--danger)/0.5); }
+  .tab.active[data-v="pending"]{ background: hsl(var(--warning)/0.16); color: hsl(var(--warning)); border-color: hsl(var(--warning)/0.5); }
+
+  .result-head{ display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .result-icon{ width:36px; height:36px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; transition: all .3s ease; }
+  .result-headline{ font-size:16px; font-weight:800; }
+  .result-reason{ font-size:13.5px; color: hsl(var(--foreground)/0.85); line-height:1.5; }
+  .result-body{ display:none; animation: fadeIn .35s ease; }
+  .result-body.show{ display:block; }
+  @keyframes fadeIn{ from{ opacity:0; transform: translateY(4px);} to{ opacity:1; transform:none;} }
+
+  /* ---------- CITATION + CONFIDENCE ---------- */
+  .cite-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+  .cite-card{
+    display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:12px;
+    background: hsl(var(--muted)/0.5); border:1px solid hsl(var(--border)); cursor:pointer;
+    transition: all .2s ease; font-size:12.5px;
+  }
+  .cite-card:hover{ border-color: hsl(var(--primary)/0.6); background: hsl(var(--primary)/0.1); transform: translateY(-1px); }
+  .conf-badge{
+    font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:999px; letter-spacing:0.3px;
+  }
+  .conf-high{ background: hsl(var(--success)/0.18); color: hsl(var(--success)); }
+  .conf-pending{ background: hsl(var(--warning)/0.18); color: hsl(var(--warning)); }
+
+  /* ---------- EVIDENCE PANEL ---------- */
+  .overlay{
+    position:fixed; inset:0; background: rgba(0,0,0,0.5); z-index:40; opacity:0; pointer-events:none; transition: opacity .3s ease;
+  }
+  .overlay.open{ opacity:1; pointer-events:auto; }
+  .evidence-panel{
+    position:fixed; top:0; right:0; bottom:0; width:min(380px, 90vw); z-index:41;
+    background: hsl(var(--card)); border-left:1px solid hsl(var(--border));
+    transform: translateX(100%); transition: transform .35s cubic-bezier(.22,1,.36,1);
+    padding: 22px; overflow-y:auto;
+  }
+  .evidence-panel.open{ transform: translateX(0); }
+  .evidence-panel h3{ font-size:15px; margin:0 0 4px; }
+  .evidence-panel .meta{ font-size:12px; color: hsl(var(--muted-foreground)); margin-bottom:16px; }
+  .evidence-panel .close{ float:right; cursor:pointer; color: hsl(var(--muted-foreground)); font-size:18px; line-height:1; }
+  .evidence-quote{ font-size:13px; line-height:1.6; padding:14px; background: hsl(var(--muted)/0.5); border-left:2px solid hsl(var(--primary)); border-radius:8px; }
+
+  footer{ text-align:center; color: hsl(var(--muted-foreground)); font-size:12px; padding: 50px 0 10px; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand"><span class="brand-dot"></span> NOXH Copilot — Preview Hiệu Ứng</div>
+      <button class="btn primary" onclick="replayAll()">↻ Chạy lại toàn bộ hiệu ứng</button>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- HERO -->
+    <section class="hero">
+      <h1>AI Legal Intelligence cho <span class="gradient-text">Nhà ở xã hội</span></h1>
+      <p>Trả lời có căn cứ, luôn kèm trích dẫn — không đoán khi thiếu dữ liệu. Bản xem trước tổng hợp các hiệu ứng chuyển động chính của giao diện.</p>
+      <div class="typing-line" id="typingLine"><span class="caret"></span></div>
+    </section>
+
+    <!-- REASONING TRACE -->
+    <section>
+      <div class="section-label">AI Reasoning Trace</div>
+      <h2>Chuỗi suy luận hiển thị theo thời gian thực</h2>
+      <p class="sub">Từng bước xuất hiện tuần tự, mô phỏng AI đang tra cứu — không phải danh sách tĩnh xuất hiện cùng lúc.</p>
+      <div class="card" id="traceCard">
+        <div class="trace-item"><div class="trace-line"></div>
+          <div class="trace-step" data-step="0"><div class="trace-dot">1</div><div class="trace-text">Xác định nhóm đối tượng: độc thân chưa kết hôn</div></div>
+        </div>
+        <div class="trace-item"><div class="trace-line"></div>
+          <div class="trace-step" data-step="1"><div class="trace-dot">2</div><div class="trace-text">Đối chiếu Điều 29 — điều kiện nhà ở (NĐ 54/2026)</div></div>
+        </div>
+        <div class="trace-item"><div class="trace-line"></div>
+          <div class="trace-step" data-step="2"><div class="trace-dot">3</div><div class="trace-text">Đối chiếu Điều 30 — điều kiện thu nhập (NĐ 136/2026)</div></div>
+        </div>
+        <div class="trace-item">
+          <div class="trace-step" data-step="3"><div class="trace-dot">4</div><div class="trace-text">Kiểm tra chồng lấp dữ liệu giữa các văn bản sửa đổi</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- THRESHOLD BAR -->
+    <section>
+      <div class="section-label">Threshold Comparison Bar</div>
+      <h2>So sánh số liệu người dùng và ngưỡng luật</h2>
+      <p class="sub">Thanh so sánh tự động lấp đầy theo giá trị thật, có mốc ngưỡng rõ ràng — không chỉ nói "đủ điều kiện" suông.</p>
+      <div class="card">
+        <div class="thr-row"><span>Thu nhập của bạn</span><span>Ngưỡng cho phép</span></div>
+        <div class="thr-track"><div class="thr-fill" id="thrFill" style="width:0%"></div><div class="thr-limit" style="left:88%"></div></div>
+        <div class="thr-values"><span><b>18</b> triệu đ/tháng</span><span style="color:hsl(var(--warning))"><b>25</b> triệu đ/tháng</span></div>
+      </div>
+    </section>
+
+    <!-- TIMELINE CHIP -->
+    <section>
+      <div class="section-label">Legal Timeline Chip</div>
+      <h2>Trực quan hoá xung đột hiệu lực văn bản</h2>
+      <p class="sub">Khi 2 nghị định cùng sửa một điều nhưng khác thời điểm, dải thời gian giúp thấy ngay văn bản nào đang áp dụng.</p>
+      <div class="card">
+        <div class="timeline" id="timeline">
+          <div class="tl-node" data-idx="0"><div class="tl-bar"></div><div class="tl-dot"></div><div class="tl-label">NĐ 100/2024<br>gốc</div></div>
+          <div class="tl-node" data-idx="1"><div class="tl-bar"></div><div class="tl-dot"></div><div class="tl-label">NĐ 261/2025<br>10/10/2025</div></div>
+          <div class="tl-node" data-idx="2"><div class="tl-bar"></div><div class="tl-dot"></div><div class="tl-label">NĐ 136/2026<br>07/04/2026</div></div>
+          <div class="tl-node" data-idx="3"><div class="tl-bar"></div><div class="tl-dot"></div><div class="tl-label">Hôm nay<br>17/07/2026</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RESULT CARD -->
+    <section>
+      <div class="section-label">Result Card — 3 trạng thái</div>
+      <h2>Đủ điều kiện / Không đủ / Thiếu thông tin</h2>
+      <p class="sub">Cả 3 trạng thái có độ nổi bật ngang nhau theo chủ đích — "Thiếu thông tin" không dùng màu đỏ để tránh gây hoang mang.</p>
+      <div class="card">
+        <div class="result-tabs">
+          <button class="tab active" data-v="eligible" onclick="setVerdict('eligible')">✓ Đủ điều kiện</button>
+          <button class="tab" data-v="ineligible" onclick="setVerdict('ineligible')">✕ Không đủ điều kiện</button>
+          <button class="tab" data-v="pending" onclick="setVerdict('pending')">? Thiếu thông tin</button>
+        </div>
+
+        <div class="result-body show" data-v="eligible">
+          <div class="result-head">
+            <div class="result-icon" style="background:hsl(var(--success)/0.16); color:hsl(var(--success));">✓</div>
+            <div class="result-headline" style="color:hsl(var(--success));">ĐỦ ĐIỀU KIỆN mua Nhà ở xã hội</div>
+          </div>
+          <div class="result-reason">Thu nhập của bạn (18 triệu/tháng) thấp hơn mức trần cho phép với người độc thân, và bạn chưa có nhà ở thuộc sở hữu.</div>
+        </div>
+
+        <div class="result-body" data-v="ineligible">
+          <div class="result-head">
+            <div class="result-icon" style="background:hsl(var(--danger)/0.16); color:hsl(var(--danger));">✕</div>
+            <div class="result-headline" style="color:hsl(var(--danger));">KHÔNG ĐỦ ĐIỀU KIỆN mua Nhà ở xã hội</div>
+          </div>
+          <div class="result-reason">Thu nhập của bạn (30 triệu/tháng) vượt mức trần cho phép đối với nhóm đối tượng độc thân theo quy định hiện hành.</div>
+        </div>
+
+        <div class="result-body" data-v="pending">
+          <div class="result-head">
+            <div class="result-icon" style="background:hsl(var(--warning)/0.16); color:hsl(var(--warning));">?</div>
+            <div class="result-headline" style="color:hsl(var(--warning));">CHƯA ĐỦ CĂN CỨ ĐỂ KẾT LUẬN CHẮC CHẮN</div>
+          </div>
+          <div class="result-reason">Mức trần thu nhập áp dụng cho nhóm "độc thân nuôi con" hiện có 2 văn bản khác thời điểm — hệ thống chưa xác nhận văn bản nào đang áp dụng. Chúng tôi không đoán để tránh một câu trả lời có thể sai.</div>
+        </div>
+
+        <div class="cite-row">
+          <div class="cite-card" onclick="openEvidence()">📄 Điều 30, NĐ 136/2026 <span class="conf-badge conf-high">ĐÃ XÁC NHẬN</span></div>
+          <div class="cite-card" onclick="openEvidence()">📄 Điều 29, NĐ 54/2026 <span class="conf-badge conf-pending">ĐANG XÁC MINH</span></div>
+        </div>
+      </div>
+    </section>
+
+    <footer>NOXH Copilot — bản xem trước hiệu ứng, không phải trang chạy thật. Trang chạy thật: <code>web/</code> (Next.js).</footer>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeEvidence()"></div>
+  <div class="evidence-panel" id="evidencePanel">
+    <span class="close" onclick="closeEvidence()">✕</span>
+    <h3>Điều 30 — Nghị định 136/2026/NĐ-CP</h3>
+    <div class="meta">Hiệu lực từ 07/04/2026 · Trạng thái: Đã xác nhận</div>
+    <div class="evidence-quote">"Mức thu nhập bình quân đầu người hằng tháng của người đứng đơn và các thành viên trong hộ gia đình không vượt quá 25.000.000 đồng đối với người độc thân..."</div>
+  </div>
+
+<script>
+  // Typing effect
+  const typingText = "Tôi độc thân, chưa có nhà, lương 18 triệu, ở Bình Dương. Tôi có đủ điều kiện mua NOXH không?";
+  const typingEl = document.getElementById('typingLine');
+  let typingTimer;
+  function runTyping(){
+    clearTimeout(typingTimer);
+    typingEl.innerHTML = '<span class="caret"></span>';
+    let i = 0;
+    function tick(){
+      if(i <= typingText.length){
+        typingEl.innerHTML = typingText.slice(0, i) + '<span class="caret"></span>';
+        i++;
+        typingTimer = setTimeout(tick, 32);
+      }
+    }
+    tick();
+  }
+
+  // Reasoning trace
+  function runTrace(){
+    const steps = document.querySelectorAll('.trace-step');
+    steps.forEach(s => s.classList.remove('show','active'));
+    steps.forEach((s, idx) => {
+      setTimeout(() => {
+        steps.forEach(x => x.classList.remove('active'));
+        s.classList.add('show','active');
+        if(idx === steps.length - 1){
+          setTimeout(() => s.classList.remove('active'), 900);
+        }
+      }, idx * 700);
+    });
+  }
+
+  // Threshold bar
+  function runThreshold(){
+    const fill = document.getElementById('thrFill');
+    fill.style.width = '0%';
+    requestAnimationFrame(() => requestAnimationFrame(() => { fill.style.width = '62%'; }));
+  }
+
+  // Timeline
+  function runTimeline(){
+    const nodes = document.querySelectorAll('.tl-node');
+    nodes.forEach(n => n.classList.remove('past','active'));
+    nodes.forEach((n, idx) => {
+      setTimeout(() => {
+        nodes.forEach((x, xi) => {
+          if(xi < idx) x.classList.add('past');
+        });
+        nodes.forEach(x => x.classList.remove('active'));
+        n.classList.add('active');
+      }, idx * 500);
+    });
+  }
+
+  // Result card tabs
+  function setVerdict(v){
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.v === v));
+    document.querySelectorAll('.result-body').forEach(b => b.classList.toggle('show', b.dataset.v === v));
+  }
+
+  // Evidence panel
+  function openEvidence(){
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('evidencePanel').classList.add('open');
+  }
+  function closeEvidence(){
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('evidencePanel').classList.remove('open');
+  }
+
+  function replayAll(){
+    runTyping();
+    runTrace();
+    runThreshold();
+    runTimeline();
+  }
+
+  window.addEventListener('load', replayAll);
+</script>
+</body>
+</html>
