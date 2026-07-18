@@ -48,7 +48,7 @@
 
 **Còn treo — ưu tiên hỏi lại nếu bắt đầu phiên mới:**
 1. Mốc thời gian 48h chính xác + rubric chấm điểm — ảnh hưởng mức độ ưu tiên P0 vs P1.
-2. Agent có cần hỏi lại người dùng khi thiếu thông tin (multi-turn) hay chỉ báo và dừng.
+2. ~~Agent có cần hỏi lại người dùng khi thiếu thông tin (multi-turn) hay chỉ báo và dừng~~ → ✅ **ĐÃ TRẢ LỜI 2026-07-19: CÓ hỏi lại**, áp dụng cho cả `/eligibility` và `/workspace`. Đã hiện thực hoá + verify (Session 10).
 3. Thời lượng demo trước giám khảo — ảnh hưởng kịch bản `11_KICH_BAN_DEMO.md`.
 4. Có nên thu thập quyết định hệ số điều chỉnh của một vài UBND tỉnh (TP.HCM, Hà Nội, Bình Dương) để điền vào `provincialCoefficients` không? Nếu có, TC-04 sẽ ra verdict chắc chắn cho các tỉnh đó và "Thiếu thông tin" chỉ còn cho tỉnh chưa có dữ liệu — thể hiện hệ thống mở rộng được. **Chưa làm vì chưa có nguồn quyết định thật.**
 

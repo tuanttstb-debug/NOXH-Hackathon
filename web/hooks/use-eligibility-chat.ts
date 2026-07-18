@@ -10,10 +10,20 @@ const PENDING_STEPS: ReasoningStep[] = [
   { label: "Fact-Check trước khi trả lời", status: "pending" },
 ];
 
+/** Khớp `EligibilityProfile` ở `lib/eligibility/reasoner.ts` — chỉ để truyền qua lại, client không diễn giải. */
+interface EligibilityProfile {
+  maritalGroup: string | null;
+  monthlyIncomeVnd: number | null;
+  hasOwnHousing: boolean | null;
+  residence: string | null;
+}
+
 interface EligibilityApiSuccess {
   extractedFields: ExtractedField[];
   reasoningSteps: ReasoningStep[];
   result: ResultBlock;
+  profile: EligibilityProfile;
+  followUpQuestion: string | null;
 }
 
 interface EligibilityApiError {
@@ -25,14 +35,26 @@ const nextId = () => `m${idCounter++}`;
 
 /**
  * Hook dùng chung cho mọi màn hình có luồng hội thoại Eligibility (AI Workspace — skill
- * "Kiểm tra điều kiện" — và Eligibility Checker độc lập). Gọi pipeline thật qua `/api/eligibility`
- * (xem `app/api/eligibility/route.ts`) — mỗi lượt gửi độc lập (single-shot, không giữ ngữ cảnh
- * hội thoại giữa các lượt, theo quyết định đã chốt: Agent không hỏi lại người dùng khi thiếu
- * thông tin, chỉ báo "Thiếu thông tin" và dừng).
+ * "Kiểm tra điều kiện" — và Eligibility Checker độc lập). Gọi pipeline thật qua `/api/eligibility`.
+ *
+ * HỘI THOẠI NHIỀU LƯỢT (2026-07-19) — thay cho single-shot trước đây:
+ * hook giữ `profile` server trả về và gửi kèm lượt sau, nên người dùng có thể khai báo rải rác
+ * ("Tôi đã kết hôn" → "Hai vợ chồng 40 triệu" → "Chưa có nhà") mà hồ sơ vẫn tích luỹ đủ.
+ * Trước đây mỗi lượt độc lập nên lượt sau xoá sạch lượt trước và không bao giờ đủ dữ liệu để kết luận.
+ *
+ * Hồ sơ được gộp bằng CODE ở server (`mergeProfile`), không nhồi lịch sử hội thoại cho LLM —
+ * giữ nguyên tính chất "input người dùng không đổi được verdict".
  */
 export function useEligibilityChat(seed: ChatMessage[] = []) {
   const [messages, setMessages] = useState<ChatMessage[]>(seed);
   const [isThinking, setIsThinking] = useState(false);
+  const [profile, setProfile] = useState<EligibilityProfile | null>(null);
+
+  /** Bắt đầu hồ sơ mới — xoá ngữ cảnh tích luỹ. Cần thiết vì `mergeProfile` không cho xoá từng trường. */
+  function reset() {
+    setProfile(null);
+    setMessages(seed);
+  }
 
   async function send(text: string) {
     const timestamp = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
@@ -53,7 +75,8 @@ export function useEligibilityChat(seed: ChatMessage[] = []) {
       const res = await fetch("/api/eligibility", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
+        // `knownProfile` là toàn bộ cơ chế nhớ ngữ cảnh — server gộp nó với thông tin của lượt này.
+        body: JSON.stringify({ message: text, knownProfile: profile }),
       });
 
       const data: EligibilityApiSuccess | EligibilityApiError = await res.json();
@@ -73,6 +96,9 @@ export function useEligibilityChat(seed: ChatMessage[] = []) {
         );
         return;
       }
+
+      // Lưu hồ sơ đã tích luỹ cho lượt kế tiếp.
+      setProfile(data.profile);
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -103,5 +129,5 @@ export function useEligibilityChat(seed: ChatMessage[] = []) {
     }
   }
 
-  return { messages, isThinking, send };
+  return { messages, isThinking, send, profile, reset };
 }

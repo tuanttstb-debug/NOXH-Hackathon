@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { composeAnswer, extractProfile } from "@/lib/eligibility/llm";
-import { factCheck, findMissingFields, reasonEligibility, type DraftConclusion } from "@/lib/eligibility/reasoner";
+import {
+  factCheck,
+  findMissingFields,
+  mergeProfile,
+  reasonEligibility,
+  type DraftConclusion,
+  type EligibilityProfile,
+} from "@/lib/eligibility/reasoner";
 import { getThresholdForGroup } from "@/lib/eligibility/legal-kg";
 import type { ExtractedField, ReasoningStep, ResultBlock } from "@/types/chat";
 
@@ -30,8 +37,20 @@ function maritalLabel(group: string | null): string {
   return getThresholdForGroup(group as Parameters<typeof getThresholdForGroup>[0])?.label ?? group;
 }
 
+/**
+ * Câu hỏi gợi mở cho từng trường còn thiếu — hội thoại nhiều lượt (quyết định 2026-07-19,
+ * trả lời OPEN QUESTION #2 vốn treo từ Session 4: agent CÓ hỏi lại thay vì báo thiếu rồi dừng).
+ * Đặt ở tầng code, không để LLM tự nghĩ câu hỏi, để nội dung hỏi luôn khớp đúng trường mà
+ * `findMissingFields()` xác định — tránh agent hỏi lệch thứ đang thiếu.
+ */
+const FOLLOW_UP_QUESTIONS: Record<string, string> = {
+  "Tình trạng hôn nhân": "Bạn cho mình biết hiện tại bạn độc thân, đang một mình nuôi con, hay đã kết hôn?",
+  "Thu nhập hàng tháng": "Thu nhập hàng tháng của bạn khoảng bao nhiêu? (nếu đã kết hôn thì là tổng của hai vợ chồng)",
+  "Tình trạng nhà ở": "Hiện bạn đã có nhà thuộc sở hữu của mình chưa?",
+};
+
 export async function POST(req: Request) {
-  let body: { message?: string };
+  let body: { message?: string; knownProfile?: EligibilityProfile };
   try {
     body = await req.json();
   } catch {
@@ -51,9 +70,11 @@ export async function POST(req: Request) {
 
   const steps: ReasoningStep[] = REASONING_LABELS.map((label) => ({ label, status: "pending" as const }));
 
-  let profile;
+  let profile: EligibilityProfile;
   try {
-    profile = await extractProfile(message);
+    // Trích xuất từ RIÊNG lượt này, rồi gộp bằng code với hồ sơ đã tích luỹ các lượt trước.
+    const extracted = await extractProfile(message);
+    profile = mergeProfile(body.knownProfile, extracted);
   } catch (err) {
     return NextResponse.json(
       {
@@ -120,5 +141,22 @@ export async function POST(req: Request) {
     { label: "Nơi cư trú", value: profile.residence ?? "(chưa cung cấp)" },
   ];
 
-  return NextResponse.json({ extractedFields, reasoningSteps: steps, result });
+  // Hỏi lại đúng trường còn thiếu ĐẦU TIÊN — hỏi từng câu một, không dồn 3 câu cùng lúc
+  // (dồn lại khiến người dùng bỏ sót và quay về đúng trạng thái bế tắc trước đây).
+  const followUpQuestion =
+    draft.verdict === "insufficient_data" && draft.missingFields?.length
+      ? FOLLOW_UP_QUESTIONS[draft.missingFields[0]] ?? null
+      : null;
+  if (followUpQuestion) {
+    result.suggestion = followUpQuestion;
+  }
+
+  return NextResponse.json({
+    extractedFields,
+    reasoningSteps: steps,
+    result,
+    // Client giữ lại và gửi kèm lượt sau — đây là toàn bộ cơ chế nhớ ngữ cảnh.
+    profile,
+    followUpQuestion,
+  });
 }

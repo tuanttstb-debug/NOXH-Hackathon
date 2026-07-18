@@ -16,7 +16,7 @@ NOXH Copilot — nền tảng AI Legal Knowledge Graph giúp người dân kiể
 | Backend/API | 🟡 1 route | `POST /api/eligibility` (Next.js Route Handler) — xem `web/app/api/eligibility/route.ts` |
 | Tài liệu module mở rộng (`docs/features/`, `docs/technical/`) | 🟡 Thiết kế xong, 0% code | Project Intelligence + Public Discourse Filter — xem mục "Module mở rộng đề xuất" bên dưới |
 | Git version control | ✅ Đã init | tracking `origin/main`. Session 4→7 trong commit `2c29969`; Session 8+9 đã commit và push (2026-07-18) |
-| Test tự động | 🟡 1 file, phủ hẹp | `web/verify-ui-rehearsal.mjs` — 16 assertion đầu-cuối qua Chrome thật trên `/eligibility`, 16/16 PASS. Chưa phủ `/legal`, `/projects`, `/api/discourse`; chưa có unit test `reasoner.ts`; chưa có CI |
+| Test tự động | 🟡 2 file | `verify-ui-rehearsal.mjs` (21/21, qua Chrome thật) + `verify-multiturn.mjs` (14/14, hội thoại nhiều lượt + hồi quy NLU + red-team). Chưa phủ `/legal`, `/projects`, `/api/discourse`; chưa có unit test `reasoner.ts`; chưa có CI |
 
 ## Frontend (`web/`) — chi tiết
 **Stack:** Next.js 14.2.5 (App Router) · React 18.3 · TypeScript 5.5 · Tailwind CSS 3.4 (+ `tailwindcss-animate`) · shadcn-style component (`components/ui/`: Button, Card, Badge, Separator qua Radix) · `framer-motion` · `recharts` · `lucide-react`.
@@ -64,6 +64,10 @@ Mức 20/30/40tr của NĐ 261/2025 đã hết hiệu lực.
 `knowledge/agents/` mô tả **5 agent**: `legal_reasoner`, `eligibility`, `fact_check`, `legal_diff` (P0), `social_listening` (P2, không làm ở demo). ADR-03 (`../docs/13_QUYET_DINH_KIEN_TRUC.md`) quyết định dùng **1 agent, pipeline tuyến tính 4 bước** thay vì 4 agent tách biệt — quyết định này **đã được hiện thực hoá** (2026-07-18), không còn ở trạng thái "Đề xuất".
 
 **Đúng 2 lệnh gọi LLM thật** trong pipeline: Parse (trích xuất hồ sơ) và Compose (soạn câu trả lời). Toàn bộ phần kết luận pháp lý — Validate, legal_reasoner, fact_check — là **code xác định, không LLM**. Đây là điều khiến TC-05/TC-06 (red-team) không thể fail về mặt cấu trúc: input người dùng không có đường nào ảnh hưởng tới verdict.
+
+**Hội thoại nhiều lượt (2026-07-19)** — thay cho single-shot trước đây, đóng OPEN QUESTION #2. Hồ sơ tích luỹ qua các lượt bằng `mergeProfile()` (**code xác định**, không nhồi lịch sử hội thoại cho LLM — nếu nhồi sẽ phá tính chất trên). Client giữ `profile` server trả về và gửi kèm `knownProfile` ở lượt sau. Thiếu trường nào thì agent **hỏi lại đúng trường đó**, từng câu một; danh sách câu hỏi nằm ở tầng code (`FOLLOW_UP_QUESTIONS` trong `app/api/eligibility/route.ts`), không để LLM tự nghĩ. Red-team đã chạy lại **qua nhiều lượt** — verdict vẫn không đổi được.
+
+**Đo NLU 2026-07-19:** bước Parse nhận diện đúng **12/12** cách nói tiếng Việt đời thường, gồm `"2 vợ chồng"`, `"lấy vợ rồi"`, `"18 củ"`, `"18 triệu rưỡi"`, `"một mình nuôi 2 đứa nhỏ"`. Báo cáo "không phân biệt nổi 2 vợ chồng" thực chất là hệ quả của mất ngữ cảnh, **không phải lỗi NLU** — đừng đi tinh chỉnh prompt/đổi model vì triệu chứng này.
 
 ⚠️ Lưu ý cho phiên sau: bước Compose **bắt buộc** phải nhận `noi_dung` (nội dung điều khoản) trong payload. Bản đầu chỉ gửi mã văn bản + số điều khoản, buộc LLM phải bịa nội dung luật khi diễn giải — đã sửa 2026-07-18, đừng gỡ trường này.
 

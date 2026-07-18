@@ -2,6 +2,38 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 10 — 2026-07-19 (Hội thoại nhiều lượt — trả lời OPEN QUESTION #2 treo từ Session 4)
+
+**Bối cảnh:** Người dùng báo hệ thống "trả lời thành từng câu đơn lẻ, không ghép nối được dữ liệu giữa các lượt" và "không phân biệt nổi 2 vợ chồng = đã kết hôn", yêu cầu tuning NLU "đạt chuẩn ChatGPT".
+
+**ĐO TRƯỚC KHI SỬA — và kết quả lật ngược chẩn đoán ban đầu:**
+Chạy 12 câu tiếng Việt đời thường qua bước Parse: **12/12 ĐÚNG**, gồm cả `"2 vợ chồng tôi"`, `"Nhà em có 2 vợ chồng"`, `"Tôi lấy vợ rồi, hai đứa được 40 triệu"`, `"18 củ"` (tiếng lóng), `"18 triệu rưỡi"` (số lẻ), `"một mình nuôi 2 đứa nhỏ"`. **NLU không hề hỏng.** Nếu đã đi tinh chỉnh prompt/đổi model theo báo cáo ban đầu thì sẽ tốn công mà không sửa được gì.
+
+**Nguyên nhân thật — mất ngữ cảnh giữa các lượt:** `use-eligibility-chat.ts` chỉ gửi `{message}`, route chỉ đọc `body.message`. Lượt 4 ("Chúng tôi chưa có nhà") xoá sạch hôn nhân + thu nhập đã khai ở lượt 2-3 → vĩnh viễn `insufficient_data`. Triệu chứng "không hiểu 2 vợ chồng" chỉ là **hệ quả** của việc này. **Bài học: đo trước, đừng sửa theo mô tả triệu chứng.**
+
+**Quyết định của người dùng (đóng OPEN QUESTION #2):** agent **CÓ hỏi lại** đúng trường còn thiếu; áp dụng cho **cả `/eligibility` và `/workspace`**.
+
+**Đã làm:**
+1. `mergeProfile()` (`reasoner.ts`) — gộp hồ sơ tích luỹ, **code xác định**. Quy tắc: giá trị mới khác null ghi đè giá trị cũ (nhờ đó câu sửa sai "à nhầm, 45 triệu" hoạt động tự nhiên).
+2. Route nhận `knownProfile`, trả `profile` đã gộp + `followUpQuestion`. Câu hỏi gợi mở đặt ở **tầng code** (`FOLLOW_UP_QUESTIONS`), không để LLM tự nghĩ — đảm bảo hỏi đúng trường mà `findMissingFields()` xác định. Hỏi **từng câu một**, không dồn 3 câu.
+3. Hook giữ `profile` giữa các lượt + `reset()`.
+4. UI: thanh "Hồ sơ đã ghi nhận" + nút "Bắt đầu hồ sơ mới" — người dùng **thấy** hệ thống đang nhớ gì và sửa được.
+
+**Vì sao KHÔNG nhồi lịch sử hội thoại cho LLM:** giữ nguyên tắc "LLM trích xuất, code quyết định". Nhồi lịch sử làm hồ sơ trôi theo cách diễn đạt và có thể phá tính chất "input người dùng không đổi được verdict" (TC-05/TC-06). Cách hiện tại cũng không tốn thêm token theo độ dài hội thoại.
+
+**Verify:** `verify-multiturn.mjs` (mới) **14/14 PASS** — giữ ngữ cảnh, hỏi đúng trường thiếu, ghi đè khi sửa, hồi quy NLU 6/6, **red-team mở rộng qua nhiều lượt vẫn không đổi được verdict**, tương thích ngược khi không gửi `knownProfile`. `verify-ui-rehearsal.mjs` mở rộng lên **21/21 PASS**. `tsc` sạch · `lint` 0 lỗi · `next build` 10 route.
+
+**2 bug trong chính bộ test (không phải lỗi sản phẩm) — đã sửa:**
+- `readVerdict()` lấy h3 **đầu tiên**; hội thoại nhiều lượt có nhiều khối kết quả nên nó đọc nhầm kết quả lượt 1 và báo fail oan.
+- `waitVerdict()` chỉ chờ "có ít nhất 1 khối kết quả" → trả về ngay vì khối của lượt trước vẫn còn trên trang. Đã đổi sang chờ **số khối tăng lên**.
+- Ngoài ra bộ lọc lỗi console không loại được favicon vì URL nằm ở `location()` chứ không nằm trong text; listener lại gắn **sau** `goto` nên bỏ lọt lỗi lúc tải trang đầu. Đã sửa cả hai.
+
+⚠️ **Lưu ý môi trường:** chạy `verify-ui-rehearsal.mjs` **ngay sau khi sửa file `.tsx`** có thể fail giả (timeout ở lượt đầu) vì Next.js đang biên dịch lại và hot-reload nuốt mất input đã gõ. Chạy lại lần 2 là sạch — đừng vội kết luận có bug.
+
+**Việc tiếp theo:** (1) quyết định số phận Public Discourse Filter (xem Session 9); (2) dữ liệu dự án → `web/lib/Projects/`; (3) rotate `MKP_API_KEY`; (4) cân nhắc thêm `favicon.ico` (đang 404, tiểu tiết nhưng giám khảo có thể thấy).
+
+---
+
 ## Session 9 — 2026-07-18 (Đóng P0 #5 bằng test tự động qua trình duyệt + commit Session 8)
 
 **Bối cảnh:** Tiếp nối Session 8 (dừng giữa chừng để đổi model). Người dùng yêu cầu test kỹ tại local trước khi commit.

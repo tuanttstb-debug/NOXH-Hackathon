@@ -53,6 +53,33 @@ export interface DraftConclusion {
   missingFields?: string[];
 }
 
+/**
+ * Gộp hồ sơ tích luỹ qua nhiều lượt hội thoại (slot filling).
+ *
+ * VÌ SAO GỘP BẰNG CODE, KHÔNG NHỒI LỊCH SỬ HỘI THOẠI CHO LLM:
+ * giữ đúng nguyên tắc kiến trúc của dự án — LLM chỉ trích xuất ngôn ngữ, mọi quyết định về
+ * NỘI DUNG hồ sơ là code xác định. Nhồi lịch sử cho LLM sẽ khiến hồ sơ trôi theo cách diễn đạt
+ * và làm mất tính chất "input người dùng không đổi được verdict" (đã verify bằng TC-05/TC-06).
+ * Cách này cũng không tốn thêm token theo độ dài hội thoại.
+ *
+ * QUY TẮC: giá trị mới khác null GHI ĐÈ giá trị cũ. Nhờ vậy câu sửa sai hoạt động tự nhiên
+ * ("à nhầm, 45 triệu" → thu nhập cập nhật), còn lượt không nhắc tới trường nào thì trường đó giữ nguyên.
+ * Hệ quả có chủ đích: người dùng KHÔNG thể xoá một trường bằng cách nói lấp lửng — muốn làm lại
+ * từ đầu thì bắt đầu hồ sơ mới (nút reset trên UI), tránh trạng thái nửa vời khó truy vết.
+ */
+export function mergeProfile(
+  known: EligibilityProfile | null | undefined,
+  incoming: EligibilityProfile
+): EligibilityProfile {
+  if (!known) return incoming;
+  return {
+    maritalGroup: incoming.maritalGroup ?? known.maritalGroup,
+    monthlyIncomeVnd: incoming.monthlyIncomeVnd ?? known.monthlyIncomeVnd,
+    hasOwnHousing: incoming.hasOwnHousing ?? known.hasOwnHousing,
+    residence: incoming.residence ?? known.residence,
+  };
+}
+
 /** Bước Validate (agents/eligibility.md #1) — thiếu trường bắt buộc → Thiếu thông tin ngay, không gọi legal_reasoner. */
 export function findMissingFields(profile: EligibilityProfile): string[] {
   const missing: string[] = [];
