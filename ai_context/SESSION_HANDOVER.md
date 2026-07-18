@@ -2,6 +2,64 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 9 — 2026-07-18 (Đóng P0 #5 bằng test tự động qua trình duyệt + commit Session 8)
+
+**Bối cảnh:** Tiếp nối Session 8 (dừng giữa chừng để đổi model). Người dùng yêu cầu test kỹ tại local trước khi commit.
+
+**Sửa 1 thông tin sai trong chính tài liệu này:** `TECH_DEBT.md` #2 ghi "toàn bộ thay đổi từ Session 4 đến nay chưa commit" — **đã lỗi thời**. Thực tế Session 4→7 đã nằm trong commit `2c29969`; chỉ Session 8 chưa commit. Đã sửa.
+
+**Đã làm:**
+1. **Verify tĩnh:** `tsc --noEmit` sạch · `npm run lint` 0 lỗi · `next build` thành công (10 route).
+2. **Smoke test runtime `/api/discourse`** — Session 8 sửa route + `sources.ts` nhưng **chưa từng chạy runtime** (build sạch không chứng minh chạy đúng). Chạy thật trên dữ liệu đĩa: 11 tin RSS → 11 claim → 0 P1, `perSource: {rss-posts.json: 11}`, `invalidDropped: 0`. **Tái hiện chính xác kết quả Session 8.**
+3. **Smoke test `/api/eligibility`** cặp TC-02/TC-04 với LLM thật — verdict lật đúng (`not_eligible` → `insufficient_data`).
+4. **✅ ĐÓNG P0 #5** — việc P0 cuối cùng còn treo từ Session 5. Viết `web/verify-ui-rehearsal.mjs`: test **có assertion** (không phải script chụp ảnh như `screenshot.mjs`), tự khởi chạy Chrome qua `puppeteer-core` + `headless: "new"`, exit code 1 nếu fail. **16/16 PASS.** Kiểm: HTTP 200, composer, reasoningSteps, verdict 3 kịch bản, citation card + link "Văn bản gốc", threshold bar `30/25tr`, checklist khi đủ điều kiện, 0 lỗi JS runtime, và **verdict lật TC-02↔TC-04 quan sát trên UI thật**. Đã xem ảnh xác nhận bằng mắt.
+
+**1 assertion sai do tôi hiểu nhầm thiết kế (không phải bug sản phẩm):** ban đầu assert "4 nhãn reasoning xuất hiện trong `innerText`" → FAIL. Đọc `features/workspace/reasoning-trace.tsx` mới thấy component render **4 nút tròn** nhưng chỉ hiện **một nhãn chữ tại một thời điểm** (`currentLabel`) — có chủ đích. Đã sửa assertion sang đếm node DOM + trạng thái `done`. **Bài học: khi test fail, đọc component trước khi kết luận là bug.**
+
+**Phát hiện cần người dùng biết:** thư mục `EVD/` **chỉ còn 3 file** (ảnh rehearsal vừa tạo). **20 ảnh evidence gốc `EVD/01`–`20` mà `PROJECT_STATE.md` tham chiếu không còn tồn tại** — không rõ bị xoá lúc nào (chưa từng được commit nên không truy được). Không tự tạo lại vì đó là evidence của các phiên trước. Nếu cần cho demo, chạy lại `web/screenshot.mjs` (lưu ý script này trỏ `localhost:3001` và cần Chrome mở sẵn port 9222).
+
+**Dừng ở đâu:** Session 8 + 9 đã commit và push. P0 **hoàn tất 6/6**.
+
+**Việc tiếp theo:** (1) `YOUTUBE_API_KEY` → chạy `crawl-youtube.mjs`, bước duy nhất còn thiếu để có dữ liệu sinh được P1; (2) dữ liệu dự án → `web/lib/Projects/`; (3) dashboard UI Discourse Filter (sau khi có dữ liệu thật); (4) rotate `MKP_API_KEY`; (5) cân nhắc dựng lại bộ ảnh `EVD/`.
+
+---
+
+## Session 8 — 2026-07-18 (Crawl dữ liệu mạng xã hội — nghiên cứu + triển khai; dừng giữa chừng để đổi model)
+
+**Kết luận nghiên cứu quan trọng nhất — Facebook/TikTok đã đóng với cuộc thi này:**
+| Nguồn | Trạng thái 7/2026 | Dùng được? |
+|---|---|---|
+| CrowdTangle | Meta đóng 14/8/2024 | ❌ không tồn tại |
+| Meta Content Library | Chỉ học viện/NPO đã thẩm định; từ 1/2026 thu **$371/tháng + $1.000 khởi tạo** | ❌ |
+| TikTok Research API | Duyệt ~**4 tuần**, loại tường minh bên thương mại | ❌ |
+| Facebook Graph API | Bỏ public post search từ 2018 | ❌ |
+| **YouTube Data API v3** | Miễn phí, không cần duyệt | ✅ **nguồn MXH khả dụng duy nhất** |
+
+**Quota YouTube (đã đổi 01/06/2026 — tách bucket riêng, thông tin này mới hơn cutoff của model):**
+`search.list` có bucket riêng ~**100 lần/ngày** (đây là thứ khan hiếm duy nhất); `commentThreads.list` = 1 unit trong pool 10.000/ngày ⇒ tới **~1.000.000 bình luận/ngày**. Nhu cầu dự án dùng **<1% quota/ngày**. Crawler đã cache `videoId` để lần chạy sau không tốn lần search nào (`--no-search`).
+
+**Đã làm:**
+1. `web/scripts/crawl-youtube.mjs` — search theo 4 từ khoá NOXH → `commentThreads` → `RawPost` JSON, có cache đĩa + quota accounting + xử lý video tắt bình luận. **CHƯA CHẠY THẬT — thiếu `YOUTUBE_API_KEY`.** Mới `node --check` cú pháp. Hướng dẫn lấy key: `web/data/discourse/HUONG_DAN_YOUTUBE_API.md`.
+2. `web/scripts/crawl-rss.mjs` — 5 feed báo VN đã kiểm chứng 200. **Đã chạy thật: 11 tin NOXH.**
+3. `web/lib/discourse/sources.ts` — gộp 3 nguồn (youtube/manual/rss) từ `web/data/discourse/`, validate và loại bản ghi thiếu trường. API `/api/discourse` nay **mặc định dùng dữ liệu thật trên đĩa**, fixture giả lập chỉ chạy khi yêu cầu tường minh.
+4. `web/data/discourse/manual-posts.example.json` — mẫu để người dùng dán bài FB/TikTok thật.
+
+**Đã chạy pipeline thật trên 11 tin RSS: 11 claim, 0 cái bị gắn cờ P1** — và đó là kết quả ĐÚNG: báo chí có dẫn nguồn, không dùng ngôn ngữ tuyệt đối, không lược điều kiện. Bộ phân loại không gắn cờ nhầm báo chí chính thống. Nhưng cũng xác nhận: **RSS không sinh tín hiệu sai lệch**, chỉ nội dung người dùng viết (bình luận YouTube) mới tạo được P1.
+
+**3 bug/vấn đề môi trường phát hiện khi chạy thật:**
+- Crawler RSS ban đầu ghi ra **1 tin thay vì 11**: `postId` lấy 20 ký tự đầu của base64(link), mà link cùng site chung tiền tố nên base64 trùng → khử trùng lặp xoá nhầm. Đã đổi sang SHA1 toàn bộ link.
+- `baochinhphu.vn` và `xaydungchinhsach.chinhphu.vn` **không phát hành RSS** (mọi đường dẫn 404) — dù là nguồn chính thống tốt nhất về nội dung. Muốn lấy phải parse HTML, chưa làm.
+- **`node_modules/@types/node` cài thiếu file**: có `fs.d.ts` nhưng mất hẳn thư mục `fs/`, nên `import từ "fs/promises"` (cả dạng có/không tiền tố `node:`) đều lỗi TS2307. Đã né bằng `import { promises as fs } from "fs"`. Chạy `npm install` lại có thể khôi phục đủ, chưa thử.
+
+**Phát hiện phụ có giá trị:** tin RSS lấy về chứa **dữ liệu dự án NOXH thật có nguồn** (Bình Quới - Thanh Đa ~5.900–6.000 căn, Đà Nẵng 680 căn gần Hội An) — dùng được cho Project Intelligence vốn đang chờ dữ liệu.
+**Phát hiện phụ 2:** `puppeteer-core` đã nằm trong devDependencies và repo có sẵn `web/screenshot.mjs` — nghĩa là **P0 #5 (rehearsal qua UI) có thể tự động hoá được**, trái với ghi chú các phiên trước rằng "AI không có công cụ trình duyệt". Chưa thử.
+
+**Dừng ở đâu:** Người dùng yêu cầu tạm dừng để đổi model. `tsc` sạch · `lint` 0 lỗi · `next build` thành công. **Chưa commit** phần Session 8.
+
+**Việc tiếp theo:** (1) lấy `YOUTUBE_API_KEY` rồi chạy `node scripts/crawl-youtube.mjs` — đây là bước duy nhất còn thiếu để có dữ liệu sinh được P1; (2) dán bài FB/TikTok thật vào `manual-posts.json`; (3) dựng dashboard UI cho Discourse Filter (giờ đã có dữ liệu thật nên hết lý do hoãn); (4) commit.
+
+---
+
 ## Session 7 — 2026-07-18 (Triển khai các phase còn lại: P1, Legal Search, Project Intelligence, Public Discourse Filter)
 
 **Bối cảnh:** Người dùng yêu cầu "triển khai toàn bộ các phase còn lại". Đã chốt với người dùng: còn **12–24h**; dữ liệu Project Intelligence **người dùng sẽ cung cấp**; Public Discourse Filter **chỉ xây pipeline, dữ liệu sau**.

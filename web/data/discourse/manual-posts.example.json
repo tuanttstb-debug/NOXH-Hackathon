@@ -1,0 +1,12 @@
+[
+  {
+    "_huong_dan": "Copy file này thành manual-posts.json rồi thay bằng bài THẬT. Xoá các trường bắt đầu bằng _ .",
+    "_channel_hop_le": "facebook | threads | tiktok | dien_dan | bao_chi",
+    "_luu_y": "url phải mở lại được để người kiểm chứng tự đối chiếu. Không có url thì không đưa vào.",
+    "postId": "fb-001",
+    "channel": "facebook",
+    "url": "https://www.facebook.com/.../posts/...",
+    "text": "Dán nguyên văn nội dung bài đăng vào đây.",
+    "publishedAt": "2026-07-15T09:30:00+07:00"
+  }
+]

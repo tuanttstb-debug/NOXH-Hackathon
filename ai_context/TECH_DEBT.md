@@ -11,7 +11,7 @@ Trước 2026-07-18: toàn bộ nhãn "AI Agent" trong `web/` là mock data tĩn
 
 ### 2. ~~Không có git repository~~ — THÔNG TIN ĐÃ LỖI THỜI (sửa 2026-07-18)
 Git đã được init từ trước (1 commit "Initial commit", tracking `origin/main`) — xem `PROJECT_STATE.md`. Mục này giữ lại để không ai điều tra lại.
-**Nợ còn thật:** toàn bộ thay đổi từ Session 4 đến nay (pipeline thật, sửa dữ liệu pháp lý) **chưa được commit**. Vẫn chưa thể rollback nếu một thay đổi làm hỏng bản demo — chưa được yêu cầu commit.
+**~~Nợ còn thật~~ — ĐÃ TRẢ (2026-07-18, Session 9).** Ghi chú cũ "toàn bộ thay đổi từ Session 4 đến nay chưa commit" **đã lỗi thời và từng gây hiểu nhầm**: thực tế Session 4→7 nằm trong commit `2c29969`, chỉ Session 8 còn treo. Session 8+9 đã commit và push. Không còn thay đổi nào chưa có điểm rollback.
 
 ### 3. Knowledge Graph không phải cấu trúc dữ liệu truy vấn được
 `knowledge/phap_ly/*.md` là văn bản Markdown mô tả, không phải schema/DB có thể query bằng code. ADR-02 (`../docs/13_QUYET_DINH_KIEN_TRUC.md`) chấp nhận điều này có chủ đích cho quy mô demo 48h ("không cần Graph DB đầy đủ") — nhưng tính đến thời điểm này, kể cả "cấu trúc đơn giản dạng bảng" mà ADR-02 mô tả cũng **chưa được hiện thực hoá**, chỉ có Markdown thuần.
@@ -35,8 +35,12 @@ Người dùng cung cấp 14 văn bản gốc tại `web/lib/Legal/`. Đã đố
 ### 6. ~~Chưa từng chạy ESLint~~ — ĐÃ XỬ LÝ (2026-07-18)
 `npm run lint` đã chạy nhiều lần, 0 warning/error. `web/README.md` vẫn còn ghi chú lỗi thời rằng chưa từng chạy — chưa sửa (ngoài phạm vi được yêu cầu).
 
-### 7. Không có test tự động
-Không tìm thấy file test/verify nào trong `web/` hay project root (khác với các dự án khác của người dùng thường có `verify_*.mjs`). Có 2 script hỗ trợ chụp ảnh (`web/screenshot.mjs`, `web/screenshot-landing.mjs`, `web/debug-opacity.mjs`) nhưng đây là công cụ chụp evidence, không phải test có assertion.
+### 7. Test tự động — đã có 1 file đầu tiên (2026-07-18, Session 9), phủ sóng vẫn hẹp
+**Mới:** `web/verify-ui-rehearsal.mjs` — test đầu-cuối **có assertion** qua trình duyệt thật (Chrome headless qua `puppeteer-core`), exit code 1 nếu fail, 16 phép kiểm trên `/eligibility`. Khác hẳn `screenshot.mjs`/`screenshot-landing.mjs`/`debug-opacity.mjs` vốn chỉ chụp ảnh không assert.
+
+**Nợ còn lại:** chỉ phủ `/eligibility`. **Chưa có test tự động cho** `/legal`, `/projects`, `/api/discourse`, và pipeline discourse. Không có unit test cho `reasoner.ts` (phần code xác định quyết định verdict — đáng test nhất vì logic thuần, không cần LLM, chạy nhanh). Cũng chưa nối vào CI (chưa có CI).
+
+⚠️ Lưu ý khi viết thêm test UI: `ReasoningTrace` render **4 nút tròn** nhưng chỉ hiện **một nhãn chữ tại một thời điểm** (`currentLabel`) — assert theo `innerText` sẽ fail nhầm. Phải đếm node DOM. Đã mắc lỗi này 1 lần ở Session 9.
 
 ## Trung bình (thêm 2026-07-18) — rủi ro lập kế hoạch, chưa ảnh hưởng demo hiện tại
 

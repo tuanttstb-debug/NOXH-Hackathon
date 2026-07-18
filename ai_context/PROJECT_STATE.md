@@ -15,8 +15,8 @@ NOXH Copilot — nền tảng AI Legal Knowledge Graph giúp người dân kiể
 | AI Agent pipeline thật | ✅ Verify xong với LLM thật (2026-07-18) | `web/lib/eligibility/{legal-kg,reasoner,llm}.ts` — Parse+Compose gọi FPT AI Marketplace (model `SaoLa3.1-medium`), Validate/legal_reasoner/fact_check là code xác định (không LLM). Chạy thật qua `curl` cho 6 kịch bản (TC-01→06, gồm 2 red-team) — tất cả PASS. **Chưa verify qua UI trình duyệt thật** — xem `TODO_NEXT.md` |
 | Backend/API | 🟡 1 route | `POST /api/eligibility` (Next.js Route Handler) — xem `web/app/api/eligibility/route.ts` |
 | Tài liệu module mở rộng (`docs/features/`, `docs/technical/`) | 🟡 Thiết kế xong, 0% code | Project Intelligence + Public Discourse Filter — xem mục "Module mở rộng đề xuất" bên dưới |
-| Git version control | ✅ Đã init | 1 commit ("Initial commit"), tracking `origin/main` — không rõ session nào đã làm (`SESSION_HANDOVER.md` trước đó vẫn ghi "chưa git init", đã lỗi thời) |
-| Test tự động | ❌ Không có | Không tìm thấy file test/verify nào |
+| Git version control | ✅ Đã init | tracking `origin/main`. Session 4→7 trong commit `2c29969`; Session 8+9 đã commit và push (2026-07-18) |
+| Test tự động | 🟡 1 file, phủ hẹp | `web/verify-ui-rehearsal.mjs` — 16 assertion đầu-cuối qua Chrome thật trên `/eligibility`, 16/16 PASS. Chưa phủ `/legal`, `/projects`, `/api/discourse`; chưa có unit test `reasoner.ts`; chưa có CI |
 
 ## Frontend (`web/`) — chi tiết
 **Stack:** Next.js 14.2.5 (App Router) · React 18.3 · TypeScript 5.5 · Tailwind CSS 3.4 (+ `tailwindcss-animate`) · shadcn-style component (`components/ui/`: Button, Card, Badge, Separator qua Radix) · `framer-motion` · `recharts` · `lucide-react`.
@@ -33,11 +33,13 @@ NOXH Copilot — nền tảng AI Legal Knowledge Graph giúp người dân kiể
 | 6. Public Discourse Filter | `POST /api/discourse` | 🟡 Pipeline xong, **chưa có UI** | Chưa dựng dashboard vì chỉ có dữ liệu giả lập, tài liệu module cấm demo trên dữ liệu giả |
 | 7–10 | — | ❌ Chưa làm | Xem `docs/UI/05_SCREEN_LIST.md` |
 
+> ⚠️ **Cột Evidence đã lỗi thời (phát hiện 2026-07-18, Session 9):** 20 ảnh `EVD/01`–`20` tham chiếu ở trên **không còn tồn tại trên đĩa**. Thư mục `EVD/` hiện chỉ có 3 ảnh rehearsal của Session 9 (`EVD/rehearsal/`). Bộ ảnh gốc chưa từng được commit nên không khôi phục được từ git. Muốn dựng lại: chạy `web/screenshot.mjs` (script trỏ `localhost:3001`, cần Chrome mở sẵn debug port 9222).
+
 **Đặc điểm quan trọng:** Màn hình 3 (Eligibility, Focus Mode — không sidebar) tái dùng gần như toàn bộ hạ tầng hội thoại của Màn hình 2 qua hook chung `use-eligibility-chat.ts` — không có luồng chat song song, tránh trùng lặp logic. 2 phần mới thật sự của Màn hình 3: `checklist-card.tsx` (chỉ hiện khi verdict = eligible) và `download-summary-button.tsx` (xuất `.txt` client-side qua `Blob`, không gọi backend).
 
-**Đã build/chạy thử (cập nhật 2026-07-18 sau khi sửa dữ liệu pháp lý):** `tsc --noEmit`, `npm run lint` (0 warning/error), `next build` đều sạch. **Đã chạy thật cả 6 test case (TC-01→06) qua `/api/eligibility` với LLM thật — 6/6 PASS.**
+**Đã build/chạy thử (cập nhật 2026-07-18, Session 9):** `tsc --noEmit`, `npm run lint` (0 warning/error), `next build` (10 route) đều sạch. **Đã chạy thật 6 test case (TC-01→06) qua `/api/eligibility` với LLM thật — 6/6 PASS.**
+**✅ Đã verify qua UI trình duyệt thật** (Session 9, `web/verify-ui-rehearsal.mjs` — 16/16 PASS): reasoningSteps, citation card + link "Văn bản gốc", threshold bar, checklist, 0 lỗi JS runtime, và verdict lật TC-02↔TC-04 quan sát trực tiếp trên giao diện. Ảnh: `EVD/rehearsal/`.
 **Cấu hình cần có:** `web/.env.local` với `MKP_API_KEY`/`MKP_API_BASE`/`MKP_API_MODEL` (tên biến đúng là `MKP_*`, không phải `FPT_AI_*` như bản nháp Session 4).
-**Chưa test:** Trải nghiệm qua UI trình duyệt thật — xem `TODO_NEXT.md` P0 #5.
 
 ## Dữ liệu pháp lý — ✅ ĐÃ CÓ TOÀN VĂN GỐC (cập nhật 2026-07-18)
 Người dùng đã cung cấp **14 văn bản gốc** (PDF/DOCX) tại `web/lib/Legal/`. Đây là nguồn có thẩm quyền, thay cho nguồn thứ cấp trước đây.

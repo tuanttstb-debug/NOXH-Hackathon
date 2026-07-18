@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { aggregateClaims, prefilter } from "@/lib/discourse/analyze";
 import { extractFromPost } from "@/lib/discourse/extract";
+import { loadCollectedPosts } from "@/lib/discourse/sources";
 import { syntheticPosts } from "@/mock/discourse-fixtures";
 import type { AnalyzedPost, RawPost } from "@/types/discourse";
 
@@ -23,14 +24,31 @@ export async function POST(req: Request) {
     );
   }
 
-  const posts = body.useSyntheticFixtures ? syntheticPosts : body.posts ?? [];
+  // Thứ tự ưu tiên: fixture giả lập (chỉ khi được yêu cầu tường minh) → posts gửi kèm →
+  // dữ liệu THẬT đã thu thập trên đĩa. Mặc định luôn ưu tiên dữ liệu thật.
+  let posts: RawPost[];
+  let perSource: Record<string, number> = {};
+  let invalidDropped = 0;
+
+  if (body.useSyntheticFixtures) {
+    posts = syntheticPosts;
+  } else if (body.posts?.length) {
+    posts = body.posts;
+  } else {
+    const loaded = await loadCollectedPosts();
+    posts = loaded.posts;
+    perSource = loaded.perSource;
+    invalidDropped = loaded.invalidDropped;
+  }
+
   if (posts.length === 0) {
     return NextResponse.json(
       {
         error: {
           code: "NO_POSTS",
           message:
-            "Chưa có bài đăng nào để phân tích. Gửi mảng 'posts', hoặc đặt 'useSyntheticFixtures': true để chạy thử pipeline bằng dữ liệu GIẢ LẬP.",
+            "Chưa có bài đăng nào để phân tích. Chạy 'node scripts/crawl-youtube.mjs' để thu thập dữ liệu thật, " +
+            "hoặc gửi mảng 'posts', hoặc đặt 'useSyntheticFixtures': true để chạy thử bằng dữ liệu GIẢ LẬP.",
         },
       },
       { status: 400 }
@@ -73,6 +91,12 @@ export async function POST(req: Request) {
       : undefined,
     stats: {
       received: posts.length,
+      perSource,
+      invalidDropped,
+      byChannel: posts.reduce<Record<string, number>>((acc, p) => {
+        acc[p.channel] = (acc[p.channel] ?? 0) + 1;
+        return acc;
+      }, {}),
       rejectedByGate: rejected,
       analyzed: analyzed.length,
       failedExtraction: failed.length,

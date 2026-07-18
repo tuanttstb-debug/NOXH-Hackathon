@@ -5,7 +5,13 @@
  * KHÔNG khai báo ở đây — xem mục 1 "Bảng cắt giảm phạm vi" của tài liệu gốc.
  */
 
-export type SourceChannel = "facebook" | "threads" | "tiktok" | "bao_chi" | "dien_dan";
+export type SourceChannel =
+  | "youtube"
+  | "facebook"
+  | "threads"
+  | "tiktok"
+  | "bao_chi"
+  | "dien_dan";
 
 /** Bài đăng thô đầu vào — mọi bài phải có nguồn tra được, không nhận bài không rõ xuất xứ. */
 export interface RawPost {
@@ -17,6 +23,8 @@ export interface RawPost {
   publishedAt: string; // ISO datetime
   /** Đánh dấu dữ liệu giả lập dùng để phát triển. Bài thật để `false`/bỏ trống. */
   synthetic?: boolean;
+  /** Ngữ cảnh nguồn (tiêu đề video, tên kênh, lượt thích...) — để người kiểm chứng có bối cảnh. */
+  sourceContext?: Record<string, string | number>;
 }
 
 export type ClaimType = "eligibility" | "procedure" | "financial" | "other";
