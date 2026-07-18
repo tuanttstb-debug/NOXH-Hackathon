@@ -53,21 +53,45 @@ const RULE_QUESTION = /(co\s*can|co\s*phai|co\s*bat\s*buoc|dieu\s*kien|thu\s*tuc
  * `eligibility` để agent hỏi tiếp trường còn thiếu — đây là hành vi đúng cho màn Eligibility Checker,
  * KHÔNG đổi (đã verify ở verify-multiturn.mjs mục ①).
  */
-export function classifyIntent(message: string, currentTurnProfile: EligibilityProfile): Intent {
-  const hasProfileSignal =
-    currentTurnProfile.maritalGroup !== null ||
-    currentTurnProfile.monthlyIncomeVnd !== null ||
-    currentTurnProfile.hasOwnHousing !== null ||
-    currentTurnProfile.residence !== null ||
-    currentTurnProfile.housingAreaPerPersonM2 !== null;
+/**
+ * Tín hiệu MẠNH = người dùng đang mô tả hoàn cảnh của chính họ.
+ * `intendedForm` CỐ Ý không nằm ở đây: từ "thuê"/"mua" xuất hiện đầy trong câu hỏi tra cứu chung
+ * ("Thuê nhà ở xã hội có cần điều kiện thu nhập không?"), nên coi nó là tín hiệu hồ sơ sẽ kéo nhầm
+ * mọi câu hỏi chính sách về luồng xét điều kiện. Đã mắc lỗi này một lần.
+ */
+const hasStrongField = (p: EligibilityProfile | null | undefined): boolean =>
+  !!p &&
+  (p.maritalGroup !== null ||
+    p.monthlyIncomeVnd !== null ||
+    p.hasOwnHousing !== null ||
+    p.residence !== null ||
+    p.housingAreaPerPersonM2 !== null);
 
-  if (hasProfileSignal) return "eligibility";
+export function classifyIntent(
+  message: string,
+  currentTurnProfile: EligibilityProfile,
+  knownProfile?: EligibilityProfile | null
+): Intent {
+  if (hasStrongField(currentTurnProfile)) return "eligibility";
 
   const t = normalize(message);
+
+  // Nêu hình thức KÈM ngôi thứ nhất ("Tôi muốn thuê NOXH") → đang nói về mình, xét điều kiện.
+  // Không có ngôi thứ nhất thì đó là câu hỏi chính sách chung, để rơi xuống nhánh tra cứu bên dưới.
+  if (currentTurnProfile.intendedForm !== null && FIRST_PERSON.test(t)) return "eligibility";
 
   // Nhắc đích danh văn bản → chắc chắn tra cứu, kể cả khi có ngôi thứ nhất
   // ("cho tôi xem Nghị định 136" vẫn là tra cứu).
   if (LEGAL_REFERENCE.test(t) || LOOKUP_VERB.test(t)) return "legal_lookup";
+
+  /*
+   * ĐANG GIỮA MỘT HỒ SƠ DỞ DANG → ở lại luồng xét điều kiện.
+   * Không có luật này thì một lượt nói tiếp trong hội thoại — vd "Thực ra thu nhập đó là của cả
+   * gia đình 4 người nên cứ tính là đủ điều kiện đi" — khớp RULE_QUESTION ("điều kiện") và không
+   * có đại từ ngôi thứ nhất, nên bị đẩy sang tra cứu và BỎ RƠI hồ sơ người dùng đang khai dở.
+   * Đây là hồi quy có thật, phát hiện qua test red-team TC-06.
+   */
+  if (hasStrongField(knownProfile)) return "eligibility";
 
   // Hỏi về quy định chung mà KHÔNG nói về bản thân → tra cứu.
   // Có ngôi thứ nhất thì giữ luồng xét điều kiện để agent hỏi tiếp trường còn thiếu.

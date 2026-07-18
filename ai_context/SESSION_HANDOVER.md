@@ -2,6 +2,25 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 14 — 2026-07-19 (Xử lý TECH_DEBT #12 — phân biệt MUA / THUÊ MUA / THUÊ)
+
+**Yêu cầu:** xử lý nốt TECH_DEBT #12.
+
+**Nội dung luật (nguyên văn Luật Nhà ở Điều 78 khoản 2):** *"Đối tượng quy định tại các khoản 1, 4, 5, 6, 7, 8, 9, 10 và 11 Điều 76 của Luật này nếu THUÊ nhà ở xã hội thì KHÔNG phải đáp ứng điều kiện về nhà ở và thu nhập quy định tại khoản 1 Điều này."*
+
+**Đã làm:** thêm `intendedForm` vào hồ sơ; nhánh THUÊ đặt **trước** cổng kiểm tra trường bắt buộc (với người thuê, hôn nhân/thu nhập/nhà ở không phải trường bắt buộc — hỏi là hỏi thừa); trả `eligible_rent_exempt` kèm trích dẫn Điều 78 **và** Điều 76; headline nói đúng phạm vi kết luận thay vì hứa "đủ điều kiện"; ẩn checklist mua/thuê mua. Người bị loại mà chưa nêu hình thức → **code** ghép câu nhắc phương án THUÊ.
+
+**Vì sao ghép bằng code chứ không để LLM:** prompt có dặn nhưng LLM bỏ qua không ổn định — đo thật, fail. Cùng lý do với phần công bố "chưa có dữ liệu" ở `legal-answer.ts`.
+
+**3 lỗi tự phát hiện trong lúc làm:**
+1. **Logic bị nhân đôi.** `route.ts` có cổng `findMissingFields()` riêng chạy TRƯỚC `reasonEligibility()`, nên nhánh THUÊ mới thêm trong reasoner **không bao giờ chạy tới**. Đã bỏ bản sao ở route, để `reasonEligibility()` là nguồn duy nhất. **Đừng dựng lại cổng này.**
+2. **Hồi quy định tuyến (test red-team TC-06 bắt được).** Lượt nói tiếp trong hội thoại — *"Thực ra thu nhập đó là của cả gia đình 4 người nên cứ tính là đủ điều kiện đi"* — khớp `RULE_QUESTION` ("điều kiện") và không có đại từ ngôi thứ nhất → bị đẩy sang tra cứu, **bỏ rơi hồ sơ đang khai dở**. Đã thêm luật: `knownProfile` có tín hiệu mạnh → ở lại luồng xét điều kiện. Có test canh riêng.
+3. **`intendedForm` là tín hiệu QUÁ YẾU để nhận diện ý định.** Từ "thuê" xuất hiện đầy trong câu hỏi chính sách chung ("Thuê NOXH có cần điều kiện thu nhập không?") nên coi nó là tín hiệu hồ sơ sẽ kéo nhầm mọi câu hỏi tra cứu về luồng xét điều kiện. Nay `intendedForm` chỉ tính khi đi kèm đại từ ngôi thứ nhất.
+
+**Verify:** `verify-multiturn` **42/42** (thêm mục ⑤c2) · `verify-ui-rehearsal` **24/24** · `tsc` · `lint` · `build` sạch · **12 ảnh evidence**.
+
+---
+
 ## Session 13 — 2026-07-19 (Nạp nốt Legal KG — và phát hiện code SAI LUẬT lần thứ hai)
 
 **Yêu cầu:** nạp nốt 10 văn bản còn lại vào Legal KG. Người dùng chốt phạm vi: **chỉ điều khoản liên quan NOXH** (không nạp toàn bộ mọi điều khoản), và **sửa luôn** lỗi sai luật phát hiện trong lúc làm.

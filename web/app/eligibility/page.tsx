@@ -18,7 +18,10 @@ export default function EligibilityCheckerPage() {
   const [evidenceCitation, setEvidenceCitation] = useState<Citation | null>(null);
 
   const lastResult = [...messages].reverse().find((m) => m.result)?.result;
-  const showChecklist = lastResult?.verdict === "eligible" && !isThinking;
+  // Người THUÊ được miễn điều kiện thu nhập/nhà ở (Luật Điều 78 k2) nên checklist mua/thuê mua
+  // KHÔNG áp dụng — hiện nó ra sẽ bắt họ đi xin giấy xác nhận thu nhập mà luật không yêu cầu.
+  const showChecklist =
+    lastResult?.verdict === "eligible" && lastResult.reasonKey !== "eligible_rent_exempt" && !isThinking;
 
   // Hồ sơ tích luỹ qua nhiều lượt — hiển thị công khai để người dùng kiểm chứng được hệ thống
   // đang nhớ đúng những gì mình đã khai, và sửa lại được nếu sai (nói lại là ghi đè).

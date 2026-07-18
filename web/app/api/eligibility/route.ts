@@ -4,7 +4,6 @@ import { classifyIntent } from "@/lib/eligibility/intent";
 import { answerLegalQuestion } from "@/lib/eligibility/legal-answer";
 import {
   factCheck,
-  findMissingFields,
   mergeProfile,
   reasonEligibility,
   type DraftConclusion,
@@ -103,7 +102,7 @@ export async function POST(req: Request) {
    * Trước bản này mọi câu hỏi đều bị đẩy qua luồng xét điều kiện — câu "So sánh Nghị định
    * 261/2025 và 136/2026" cho ra hồ sơ rỗng rồi hệ thống hỏi ngược tình trạng hôn nhân.
    */
-  if (classifyIntent(message, extracted) === "legal_lookup") {
+  if (classifyIntent(message, extracted, body.knownProfile) === "legal_lookup") {
     const lookupSteps: ReasoningStep[] = LOOKUP_REASONING_LABELS.map((label) => ({
       label,
       status: "done" as const,
@@ -161,14 +160,19 @@ export async function POST(req: Request) {
     });
   }
 
-  let draft: DraftConclusion;
-  const missingFields = findMissingFields(profile);
-  if (missingFields.length > 0) {
-    // Đúng agents/eligibility.md #1: thiếu trường bắt buộc → Thiếu thông tin ngay, KHÔNG gọi legal_reasoner.
-    draft = { verdict: "insufficient_data", reasonKey: "insufficient_missing_fields", citations: [], missingFields };
+  /*
+   * `reasonEligibility()` là NGUỒN DUY NHẤT quyết định kết luận, kể cả nhánh "thiếu trường bắt buộc".
+   * Trước 2026-07-19 route tự gọi `findMissingFields()` rồi short-circuit TRƯỚC khi vào reasoner —
+   * logic bị nhân đôi, và khi reasoner thêm nhánh mới (THUÊ được miễn điều kiện thu nhập/nhà ở)
+   * thì cổng ở route chặn mất, người muốn thuê vẫn bị hỏi hôn nhân/thu nhập. Đừng dựng lại cổng này.
+   */
+  const draft: DraftConclusion = factCheck(reasonEligibility(profile));
+
+  if (draft.reasonKey === "insufficient_missing_fields") {
+    // Dừng sớm ngay sau bước Parse — các bước sau KHÔNG chạy, nên giữ nguyên trạng thái `pending`
+    // để thanh reasoning phản ánh đúng sự thật (xem reasoning-trace.tsx).
   } else {
     steps[1].status = "done";
-    draft = factCheck(reasonEligibility(profile));
     steps[2].status = "done";
     steps[3].status = "done";
   }
@@ -190,13 +194,30 @@ export async function POST(req: Request) {
 
   const result: ResultBlock = {
     verdict: draft.verdict,
-    headline: headlineFor(draft.verdict),
+    // Người THUÊ được miễn điều kiện thu nhập/nhà ở, nhưng vẫn phải thuộc nhóm đối tượng Điều 76 —
+    // headline phải nói đúng phạm vi kết luận, không hứa hẹn quá thứ hệ thống thực sự kiểm được.
+    headline:
+      draft.reasonKey === "eligible_rent_exempt"
+        ? "KHÔNG BỊ RÀNG BUỘC ĐIỀU KIỆN THU NHẬP VÀ NHÀ Ở (thuê NOXH)"
+        : headlineFor(draft.verdict),
     reason: composed.reason,
     threshold: draft.threshold,
     citations: draft.citations,
     conflictingCitations: draft.conflictingCitations,
     suggestion: composed.suggestion,
+    reasonKey: draft.reasonKey,
   };
+
+  /*
+   * Người bị loại vì thu nhập/nhà ở mà CHƯA nêu hình thức: kết luận đó chỉ đúng cho MUA và
+   * THUÊ MUA. Luật Nhà ở Điều 78 khoản 2 miễn cả hai điều kiện nếu họ chỉ THUÊ — đây là lối thoát
+   * thật sự, không nói ra là bỏ mặc người dùng ở kết luận sai phạm vi.
+   * Ghép bằng CODE, không giao cho LLM: prompt có dặn nhưng LLM bỏ qua không ổn định (đã đo).
+   */
+  if (draft.verdict === "not_eligible" && profile.intendedForm === null) {
+    result.reason +=
+      " Lưu ý: kết luận này áp dụng cho hình thức MUA hoặc THUÊ MUA. Nếu bạn chỉ có nhu cầu THUÊ nhà ở xã hội thì theo Luật Nhà ở Điều 78 khoản 2, bạn không phải đáp ứng điều kiện về thu nhập và nhà ở.";
+  }
 
   const extractedFields: ExtractedField[] = [
     { label: "Tình trạng hôn nhân", value: maritalLabel(profile.maritalGroup) },
@@ -213,6 +234,13 @@ export async function POST(req: Request) {
     },
     { label: "Nơi cư trú", value: profile.residence ?? "(chưa cung cấp)" },
   ];
+
+  // Hình thức quyết định có áp điều kiện thu nhập/nhà ở hay không (Luật Điều 78 k2) — hiện ra để
+  // người dùng thấy hệ thống hiểu đúng nhu cầu của họ và sửa được nếu sai.
+  if (profile.intendedForm) {
+    const formLabel = { mua: "Mua", thue_mua: "Thuê mua", thue: "Thuê" }[profile.intendedForm];
+    extractedFields.push({ label: "Hình thức", value: formLabel });
+  }
 
   // Chỉ hiện diện tích khi người dùng ĐÃ CÓ nhà — với người chưa có nhà thì trường này vô nghĩa
   // và hiện ra chỉ làm rối (điều kiện diện tích chỉ áp dụng cho trường hợp đã sở hữu nhà).

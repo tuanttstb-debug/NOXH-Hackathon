@@ -1,9 +1,11 @@
 import type { Citation, EligibilityVerdict } from "@/types/legal";
 import {
+  BENEFICIARY_GROUPS_ARTICLE_ID,
   HOUSING_ARTICLE_ID,
   HOUSING_AREA_ARTICLE_ID,
   MIN_AREA_PER_PERSON_M2,
   PROVINCIAL_COEFFICIENT_ARTICLE_ID,
+  RENT_EXEMPTION_ARTICLE_ID,
   getProvincialCoefficient,
   getThresholdForGroup,
   isArticleActive,
@@ -29,6 +31,13 @@ export interface EligibilityProfile {
    * Thêm 2026-07-19 để sửa lỗi coi "đã có nhà" là loại trừ tuyệt đối.
    */
   housingAreaPerPersonM2: number | null;
+  /**
+   * Hình thức người dùng nhắm tới. QUYẾT ĐỊNH việc có áp điều kiện thu nhập/nhà ở hay không:
+   * Luật Nhà ở Điều 78 khoản 2 miễn CẢ HAI điều kiện cho người chỉ THUÊ.
+   * `null` = chưa nêu → mặc định xét theo mua/thuê mua (chặt hơn), và câu trả lời sẽ nói rõ
+   * rằng nếu chỉ muốn THUÊ thì điều kiện này không áp dụng.
+   */
+  intendedForm: "mua" | "thue_mua" | "thue" | null;
 }
 
 export const REQUIRED_FIELD_LABELS: Record<"maritalGroup" | "monthlyIncomeVnd" | "hasOwnHousing", string> = {
@@ -48,6 +57,7 @@ export interface DraftConclusion {
   verdict: EligibilityVerdict;
   reasonKey:
     | "eligible_ok"
+    | "eligible_rent_exempt"
     | "not_eligible_has_housing"
     | "not_eligible_income_over_cap"
     | "insufficient_missing_fields"
@@ -87,6 +97,7 @@ export function mergeProfile(
     hasOwnHousing: incoming.hasOwnHousing ?? known.hasOwnHousing,
     residence: incoming.residence ?? known.residence,
     housingAreaPerPersonM2: incoming.housingAreaPerPersonM2 ?? known.housingAreaPerPersonM2,
+    intendedForm: incoming.intendedForm ?? known.intendedForm,
   };
 }
 
@@ -107,6 +118,23 @@ export function findMissingFields(profile: EligibilityProfile): string[] {
  * lại ngưỡng ở đây (đúng nguyên tắc `docs/08_MO_HINH_DU_LIEU.md`).
  */
 export function reasonEligibility(profile: EligibilityProfile): DraftConclusion {
+  /*
+   * THUÊ ĐƯỢC MIỄN ĐIỀU KIỆN NHÀ Ở VÀ THU NHẬP — Luật Nhà ở Điều 78 khoản 2.
+   * Phải xét TRƯỚC `findMissingFields`: với người chỉ thuê, hôn nhân/thu nhập/nhà ở KHÔNG phải
+   * trường bắt buộc, nên hỏi những thứ đó là hỏi thừa và sẽ chặn nhầm ở "Thiếu thông tin".
+   * Điều kiện còn lại là thuộc nhóm đối tượng tại Điều 76 — hệ thống KHÔNG tự khẳng định thay
+   * người dùng, nên câu trả lời phải nêu rõ ràng buộc đó (xem COMPOSE_SYSTEM_PROMPT).
+   */
+  if (profile.intendedForm === "thue") {
+    const exemption = toCitation(RENT_EXEMPTION_ARTICLE_ID);
+    const groups = toCitation(BENEFICIARY_GROUPS_ARTICLE_ID);
+    return {
+      verdict: "eligible",
+      reasonKey: "eligible_rent_exempt",
+      citations: [exemption, groups].filter((c): c is Citation => c !== null),
+    };
+  }
+
   const missingFields = findMissingFields(profile);
   if (missingFields.length > 0) {
     return { verdict: "insufficient_data", reasonKey: "insufficient_missing_fields", citations: [], missingFields };

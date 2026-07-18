@@ -26,6 +26,12 @@ export interface ResultBlock {
   citations: Citation[];
   conflictingCitations?: [Citation, Citation]; // dùng cho verdict = insufficient_data
   suggestion?: string;
+  /**
+   * Lý do kỹ thuật (khớp `DraftConclusion.reasonKey`). UI cần trường này để phân biệt các trường
+   * hợp có CÙNG verdict nhưng khác hệ quả — vd `eligible_rent_exempt` cũng là "eligible" nhưng
+   * người thuê KHÔNG cần giấy xác nhận thu nhập, nên checklist mua/thuê mua không áp dụng.
+   */
+  reasonKey?: string;
 }
 
 export interface ChatMessage {

@@ -81,6 +81,9 @@ Người dùng đã cung cấp **14 văn bản gốc** (PDF/DOCX) tại `web/lib
 | Luật 29/2023, NĐ 96/2024, TT 09/2025 | ❌ có chủ đích | Kinh doanh BĐS / sắp xếp bộ máy — không phải nội dung NOXH |
 | NĐ 95/2024 | ❌ **không nạp được** | PDF scan ảnh, trích ra 0 ký tự, cần OCR — xem TECH_DEBT #13 |
 
+**⚠️ Điều kiện thu nhập/nhà ở CHỈ áp dụng cho MUA và THUÊ MUA (sửa 2026-07-19):**
+Luật Nhà ở Điều 78 khoản 2 — người chỉ **THUÊ** NOXH **không phải** đáp ứng điều kiện về nhà ở và thu nhập. Hồ sơ có trường `intendedForm`; nhánh THUÊ xét **trước** cổng trường bắt buộc. Ràng buộc còn lại với người thuê: phải thuộc nhóm đối tượng Điều 76 — hệ thống **không tự khẳng định thay người dùng**, câu trả lời phải nêu rõ. **"Thuê mua" KHÔNG phải "thuê"** — thuê mua vẫn phải đáp ứng đủ điều kiện.
+
 **⚠️ Điều kiện nhà ở có HAI đường đạt (sửa 2026-07-19 — trước đó code SAI LUẬT):**
 NĐ 100/2024 Điều 29 **khoản 1** (chưa có nhà, sửa bởi NĐ 54/2026) **HOẶC** **khoản 2** (đã có nhà nhưng diện tích bình quân **< 15 m² sàn/người**). Khoản 2 vẫn hiệu lực — NĐ 54/2026 Điều 32 chỉ sửa khoản 1. Code cũ coi "đã có nhà" là loại trừ tuyệt đối và trả "Không đủ điều kiện" cho cả nhóm mà luật cho phép. **Đừng gộp lại thành một điều kiện.**
 

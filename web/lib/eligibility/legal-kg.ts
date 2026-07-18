@@ -110,6 +110,17 @@ export const HOUSING_ARTICLE_ID = "art-dieu-29-k1-nd54";
 export const HOUSING_AREA_ARTICLE_ID = "art-dieu-29-k2-nd100";
 export const MIN_AREA_PER_PERSON_M2 = 15;
 
+/**
+ * Luật Nhà ở Điều 78 khoản 2 — nguyên văn: "Đối tượng quy định tại các khoản 1, 4, 5, 6, 7, 8, 9,
+ * 10 và 11 Điều 76 của Luật này nếu THUÊ nhà ở xã hội thì KHÔNG phải đáp ứng điều kiện về nhà ở
+ * và thu nhập quy định tại khoản 1 Điều này."
+ *
+ * Nghĩa là điều kiện thu nhập/nhà ở CHỈ áp dụng cho MUA và THUÊ MUA. Bỏ qua phân biệt này khiến
+ * người chỉ muốn THUÊ bị báo "Không đủ điều kiện" oan — cùng dạng lỗi với vụ diện tích 15 m².
+ */
+export const RENT_EXEMPTION_ARTICLE_ID = "art-dieu-78-luat27";
+export const BENEFICIARY_GROUPS_ARTICLE_ID = "art-dieu-76-luat27";
+
 export function getThresholdForGroup(group: MaritalGroup): IncomeThreshold | undefined {
   return incomeThresholds.find((t) => t.group === group);
 }
