@@ -1,4 +1,4 @@
-import type { Citation, EligibilityVerdict } from "@/types/legal";
+import type { Citation, ResultKind } from "@/types/legal";
 
 export type MessageRole = "user" | "assistant";
 
@@ -14,7 +14,7 @@ export interface ReasoningStep {
 
 /** Dữ liệu cho khối kết quả (Result Card) — ánh xạ EligibilityResult nhưng thêm phần hiển thị. */
 export interface ResultBlock {
-  verdict: EligibilityVerdict;
+  verdict: ResultKind;
   headline: string;
   reason: string;
   threshold?: {

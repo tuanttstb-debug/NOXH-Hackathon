@@ -2,6 +2,38 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 11 — 2026-07-19 (Định tuyến ý định — sửa lỗi "mọi câu hỏi đều rơi vào luồng xét điều kiện")
+
+**Bối cảnh:** Người dùng gửi ảnh chụp lỗi — hỏi "So sánh Nghị định 261/2025 và 136/2026" nhưng hệ thống trả về màn hình xét điều kiện với hồ sơ rỗng và hỏi ngược tình trạng hôn nhân.
+
+**Ảnh đó phơi ra 2 bug, bug thứ 2 nghiêm trọng hơn về uy tín:**
+1. **Không có định tuyến ý định** — `/api/eligibility` mặc định MỌI tin nhắn đều là hồ sơ xét điều kiện. Mọi câu hỏi pháp lý đều rơi vào màn hình chết, không có đường thoát.
+2. **Thanh reasoning nói dối** — bước 2/3/4 vẫn `pending` (xám) nhưng nhãn chữ ghi "Fact-Check trước khi trả lời". Nguyên nhân: `reasoning-trace.tsx` lấy nhãn của bước CUỐI khi không có bước nào `active`. Giao diện tuyên bố đã Fact-Check trong khi bước đó **chưa hề chạy** — đúng dạng "Potemkin AI" mà `docs/16_DESIGN_REVIEW.md` cảnh báo.
+
+**Đã làm:**
+1. `lib/eligibility/intent.ts` — `classifyIntent()`, **không tốn thêm lệnh gọi LLM**: bước Parse đã chạy sẵn và cho tín hiệu mạnh hơn mọi classifier. Có bất kỳ trường hồ sơ nào ≠ null → `eligibility`; hồ sơ rỗng + có tham chiếu văn bản/động từ tra cứu → `legal_lookup`; còn lại giữ `eligibility` (không đổi hành vi hỏi tiếp trường thiếu).
+2. `lib/eligibility/legal-answer.ts` — truy xuất từ Legal KG bằng **code xác định**, LLM chỉ diễn giải nội dung đã truy xuất, cấm thêm điều khoản/số liệu ngoài payload.
+3. Kiểu hiển thị mới `legal_answer` (`ResultKind`) — **cố ý không mượn lại 3 verdict xét điều kiện**, vì "đủ/không đủ" là kết luận về HỒ SƠ, không áp dụng cho câu hỏi tra cứu. Màu trung tính + icon sách.
+4. Sửa `reasoning-trace.tsx`: nhãn lấy theo bước `done` cuối cùng, và hiện rõ "· dừng tại đây vì chưa đủ dữ liệu để chạy tiếp" khi pipeline dừng sớm.
+
+**⚠️ LỖI NGHIÊM TRỌNG TÔI TỰ GÂY RA RỒI TỰ BẮT — gán sai nguồn:**
+Bản đầu của `legal-answer.ts`: nếu mã văn bản không khớp KG thì rơi xuống tìm theo từ khoá. Hỏi "Thông tư 09/2021 quy định gì về nhà ở xã hội?" → "nhà ở xã hội" khớp mọi điều khoản → hệ thống trả về nội dung của 4 nghị định khác **kèm 6 trích dẫn**, không hề nói rằng nó không có dữ liệu về TT 09/2021. Người đọc sẽ hiểu đó là nội dung văn bản mình hỏi.
+**Test đầu tiên CHO LỌT lỗi này** vì assertion quá lỏng (chỉ tìm chữ "chưa" trong reason). Đã siết: assert `citations.length === 0`.
+**Sửa:** nhắc đích danh văn bản không có trong KG → **tuyệt đối không** rơi xuống tìm theo từ khoá; hỏi nhiều văn bản mà chỉ một số có → **công bố phần thiếu** ngay đầu câu trả lời (ghép bằng code, không giao LLM tự nhớ).
+
+**2 bug regex tiếp theo do test siết chặt lộ ra:**
+- `"Thông tư 09/2021"`: lookahead backtrack bắt ra số `"0"`, rồi `"136/2026".includes("0")` = true ⇒ trả về toàn bộ điều khoản.
+- `"Nghị định 136/2026"`: backtrack bắt ra `"13"` ⇒ báo thiếu nhầm "văn bản 13".
+**Nguyên nhân chung: khớp mã văn bản bằng chuỗi con.** Đã đổi sang tách cấu trúc `số/năm` rồi so sánh từng phần.
+
+**Verify:** `verify-multiturn.mjs` **23/23** (thêm mục ⑤b định tuyến ý định + chống gán sai nguồn) · `verify-ui-rehearsal.mjs` **21/21** · `tsc` sạch · `lint` 0 lỗi · `next build` 10 route. Ảnh đối chiếu: `EVD/rehearsal/05_legal_lookup_fixed.png`.
+
+**Ghi nhận:** `tsc` bắt được 1 chỗ tôi sẽ bỏ sót (`download-summary-button.tsx` thiếu nhánh `legal_answer` trong `Record<ResultKind, string>`) — lợi ích thật của việc mở rộng union type thay vì dùng `string`.
+
+**Việc tiếp theo:** (1) quyết định số phận Public Discourse Filter; (2) dữ liệu dự án → `web/lib/Projects/`; (3) rotate `MKP_API_KEY`; (4) `favicon.ico` đang 404.
+
+---
+
 ## Session 10 — 2026-07-19 (Hội thoại nhiều lượt — trả lời OPEN QUESTION #2 treo từ Session 4)
 
 **Bối cảnh:** Người dùng báo hệ thống "trả lời thành từng câu đơn lẻ, không ghép nối được dữ liệu giữa các lượt" và "không phân biệt nổi 2 vợ chồng = đã kết hôn", yêu cầu tuning NLU "đạt chuẩn ChatGPT".

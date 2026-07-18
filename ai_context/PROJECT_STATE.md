@@ -67,6 +67,10 @@ Mức 20/30/40tr của NĐ 261/2025 đã hết hiệu lực.
 
 **Hội thoại nhiều lượt (2026-07-19)** — thay cho single-shot trước đây, đóng OPEN QUESTION #2. Hồ sơ tích luỹ qua các lượt bằng `mergeProfile()` (**code xác định**, không nhồi lịch sử hội thoại cho LLM — nếu nhồi sẽ phá tính chất trên). Client giữ `profile` server trả về và gửi kèm `knownProfile` ở lượt sau. Thiếu trường nào thì agent **hỏi lại đúng trường đó**, từng câu một; danh sách câu hỏi nằm ở tầng code (`FOLLOW_UP_QUESTIONS` trong `app/api/eligibility/route.ts`), không để LLM tự nghĩ. Red-team đã chạy lại **qua nhiều lượt** — verdict vẫn không đổi được.
 
+**Định tuyến ý định (2026-07-19)** — `lib/eligibility/intent.ts`. Trước đó MỌI câu hỏi đều bị đẩy qua luồng xét điều kiện; câu hỏi tra cứu pháp lý rơi vào màn hình chết. Nay: có tín hiệu hồ sơ → xét điều kiện; hồ sơ rỗng + tham chiếu văn bản → **tra cứu pháp lý** (`lib/eligibility/legal-answer.ts`, truy xuất KG bằng code, LLM chỉ diễn giải, kiểu hiển thị riêng `legal_answer`). Không tốn thêm lệnh gọi LLM — dùng lại kết quả bước Parse.
+
+⚠️ **Quy tắc chống gán sai nguồn (đừng gỡ):** nếu người dùng nhắc đích danh văn bản KHÔNG có trong KG, hệ thống **không được** rơi xuống tìm theo từ khoá rồi trả về văn bản khác. KG hiện chỉ có 4 nghị định lõi; hỏi ngoài phạm vi đó phải nói thẳng là chưa có dữ liệu. Đã từng sai đúng kiểu này một lần (xem `SESSION_HANDOVER.md` Session 11).
+
 **Đo NLU 2026-07-19:** bước Parse nhận diện đúng **12/12** cách nói tiếng Việt đời thường, gồm `"2 vợ chồng"`, `"lấy vợ rồi"`, `"18 củ"`, `"18 triệu rưỡi"`, `"một mình nuôi 2 đứa nhỏ"`. Báo cáo "không phân biệt nổi 2 vợ chồng" thực chất là hệ quả của mất ngữ cảnh, **không phải lỗi NLU** — đừng đi tinh chỉnh prompt/đổi model vì triệu chứng này.
 
 ⚠️ Lưu ý cho phiên sau: bước Compose **bắt buộc** phải nhận `noi_dung` (nội dung điều khoản) trong payload. Bản đầu chỉ gửi mã văn bản + số điều khoản, buộc LLM phải bịa nội dung luật khi diễn giải — đã sửa 2026-07-18, đừng gỡ trường này.

@@ -14,7 +14,23 @@ import type { ReasoningStep } from "@/types/chat";
  */
 export function ReasoningTrace({ steps }: { steps: ReasoningStep[] }) {
   const activeIndex = steps.findIndex((s) => s.status === "active");
-  const currentLabel = steps[activeIndex]?.label ?? steps[steps.length - 1]?.label;
+
+  /*
+   * Nhãn phải phản ánh bước THỰC SỰ chạy tới đâu.
+   * Lỗi cũ (sửa 2026-07-19): khi không còn bước `active`, nhãn rơi về bước CUỐI CÙNG — nên lúc
+   * pipeline dừng sớm vì thiếu dữ liệu (chỉ bước 1 xong, bước 2-4 vẫn `pending`), giao diện vẫn
+   * ghi "Fact-Check trước khi trả lời". Tức là tuyên bố đã fact-check trong khi bước đó CHƯA HỀ
+   * chạy — đúng dạng "Potemkin AI" mà docs/16_DESIGN_REVIEW.md cảnh báo.
+   * Nay lấy nhãn của bước `done` cuối cùng, và nói rõ khi pipeline dừng sớm.
+   */
+  const lastDoneIndex = steps.map((s) => s.status).lastIndexOf("done");
+  const stoppedEarly = activeIndex === -1 && lastDoneIndex >= 0 && lastDoneIndex < steps.length - 1;
+  const currentLabel =
+    activeIndex !== -1
+      ? steps[activeIndex].label
+      : lastDoneIndex >= 0
+        ? steps[lastDoneIndex].label
+        : steps[0]?.label;
 
   return (
     <div className="surface-floating rounded-xl p-4">
@@ -56,6 +72,9 @@ export function ReasoningTrace({ steps }: { steps: ReasoningStep[] }) {
       <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
         <span className="text-foreground">{currentLabel}</span>
         {activeIndex !== -1 && <span className="animate-pulse-soft">…</span>}
+        {stoppedEarly && (
+          <span className="text-warning"> · dừng tại đây vì chưa đủ dữ liệu để chạy tiếp</span>
+        )}
       </p>
     </div>
   );

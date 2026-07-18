@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, XCircle, HelpCircle, Lightbulb, ChevronDown } from "lucide-react";
+import { CheckCircle2, XCircle, HelpCircle, Lightbulb, ChevronDown, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CitationCard } from "@/features/workspace/citation-card";
 import { ThresholdBar } from "@/features/workspace/threshold-bar";
@@ -13,6 +13,9 @@ const VERDICT_CONFIG = {
   eligible: { icon: CheckCircle2, colorClass: "text-success", bgClass: "bg-success/10 border-success/30" },
   not_eligible: { icon: XCircle, colorClass: "text-danger", bgClass: "bg-danger/10 border-danger/30" },
   insufficient_data: { icon: HelpCircle, colorClass: "text-warning", bgClass: "bg-warning/10 border-warning/30" },
+  // Tra cứu pháp lý — màu trung tính có chủ đích: đây là câu trả lời tra cứu, KHÔNG phải phán quyết
+  // về hồ sơ của người dùng, nên không được dùng màu xanh/đỏ gợi ý "đủ/không đủ điều kiện".
+  legal_answer: { icon: BookOpen, colorClass: "text-primary", bgClass: "bg-primary/10 border-primary/30" },
 } as const;
 
 /**

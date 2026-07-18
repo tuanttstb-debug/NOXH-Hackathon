@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { composeAnswer, extractProfile } from "@/lib/eligibility/llm";
+import { classifyIntent } from "@/lib/eligibility/intent";
+import { answerLegalQuestion } from "@/lib/eligibility/legal-answer";
 import {
   factCheck,
   findMissingFields,
@@ -24,6 +26,13 @@ const REASONING_LABELS = [
   "Truy vấn Knowledge Graph — điều kiện liên quan",
   "Đối chiếu văn bản đang hiệu lực tại hôm nay",
   "Fact-Check trước khi trả lời",
+] as const;
+
+/** Chuỗi bước riêng cho câu hỏi TRA CỨU pháp lý — không đi qua legal_reasoner/fact_check hồ sơ. */
+const LOOKUP_REASONING_LABELS = [
+  "Nhận diện đây là câu hỏi tra cứu văn bản",
+  "Truy xuất điều khoản liên quan từ Knowledge Graph",
+  "Đối chiếu tình trạng hiệu lực của từng điều khoản",
 ] as const;
 
 function headlineFor(verdict: DraftConclusion["verdict"]): string {
@@ -71,9 +80,10 @@ export async function POST(req: Request) {
   const steps: ReasoningStep[] = REASONING_LABELS.map((label) => ({ label, status: "pending" as const }));
 
   let profile: EligibilityProfile;
+  let extracted: EligibilityProfile;
   try {
     // Trích xuất từ RIÊNG lượt này, rồi gộp bằng code với hồ sơ đã tích luỹ các lượt trước.
-    const extracted = await extractProfile(message);
+    extracted = await extractProfile(message);
     profile = mergeProfile(body.knownProfile, extracted);
   } catch (err) {
     return NextResponse.json(
@@ -87,6 +97,69 @@ export async function POST(req: Request) {
     );
   }
   steps[0].status = "done";
+
+  /*
+   * ĐỊNH TUYẾN Ý ĐỊNH (sửa lỗi 2026-07-19).
+   * Trước bản này mọi câu hỏi đều bị đẩy qua luồng xét điều kiện — câu "So sánh Nghị định
+   * 261/2025 và 136/2026" cho ra hồ sơ rỗng rồi hệ thống hỏi ngược tình trạng hôn nhân.
+   */
+  if (classifyIntent(message, extracted) === "legal_lookup") {
+    const lookupSteps: ReasoningStep[] = LOOKUP_REASONING_LABELS.map((label) => ({
+      label,
+      status: "done" as const,
+    }));
+
+    let answer;
+    try {
+      answer = await answerLegalQuestion(message);
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: {
+            code: "LLM_PROVIDER_ERROR",
+            message: err instanceof Error ? err.message : "Lỗi không xác định khi tra cứu văn bản.",
+          },
+        },
+        { status: 502 }
+      );
+    }
+
+    // Không tìm thấy điều khoản nào → nói thẳng là chưa có dữ liệu, KHÔNG để LLM bịa.
+    // Knowledge Graph hiện chỉ nạp 4 văn bản lõi (xem PROJECT_STATE.md).
+    if (!answer) {
+      return NextResponse.json({
+        extractedFields: [],
+        reasoningSteps: lookupSteps.map((s, i) => (i === 0 ? s : { ...s, status: "pending" as const })),
+        result: {
+          verdict: "legal_answer",
+          headline: "Chưa có dữ liệu về văn bản này",
+          reason:
+            "Câu hỏi của bạn nhắc tới văn bản chưa được nạp vào Knowledge Graph. Hệ thống hiện chỉ đối chiếu " +
+            "toàn văn 4 nghị định lõi về Nhà ở xã hội (100/2024, 261/2025, 54/2026, 136/2026). " +
+            "Mình không trả lời dựa trên suy đoán, nên xin phép dừng ở đây thay vì đưa thông tin có thể sai.",
+          citations: [],
+          suggestion: "Bạn thử hỏi về một trong 4 nghị định trên, hoặc mở màn hình Tra cứu pháp lý để xem toàn bộ điều khoản đang có.",
+        },
+        profile,
+        followUpQuestion: null,
+      });
+    }
+
+    return NextResponse.json({
+      extractedFields: [],
+      reasoningSteps: lookupSteps,
+      result: {
+        verdict: "legal_answer",
+        headline: answer.headline,
+        reason: answer.reason,
+        citations: answer.citations,
+        suggestion: answer.suggestion,
+      },
+      // Giữ nguyên hồ sơ đang tích luỹ — hỏi xen một câu tra cứu KHÔNG được xoá ngữ cảnh hồ sơ.
+      profile,
+      followUpQuestion: null,
+    });
+  }
 
   let draft: DraftConclusion;
   const missingFields = findMissingFields(profile);

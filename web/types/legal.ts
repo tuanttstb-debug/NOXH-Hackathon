@@ -40,6 +40,13 @@ export interface Citation {
 
 export type EligibilityVerdict = "eligible" | "not_eligible" | "insufficient_data";
 
+/**
+ * Kiểu khối kết quả hiển thị. `legal_answer` (thêm 2026-07-19) dành cho câu hỏi TRA CỨU pháp lý —
+ * cố ý KHÔNG mượn lại 3 verdict xét điều kiện, vì "đủ/không đủ/thiếu căn cứ" là kết luận về HỒ SƠ
+ * của người dùng, không áp dụng được cho một câu hỏi tra cứu văn bản.
+ */
+export type ResultKind = EligibilityVerdict | "legal_answer";
+
 export interface EligibilityResult {
   verdict: EligibilityVerdict;
   reason: string;

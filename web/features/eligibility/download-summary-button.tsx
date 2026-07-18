@@ -8,6 +8,9 @@ const VERDICT_LABEL: Record<ResultBlock["verdict"], string> = {
   eligible: "ĐỦ ĐIỀU KIỆN",
   not_eligible: "KHÔNG ĐỦ ĐIỀU KIỆN",
   insufficient_data: "CHƯA ĐỦ CĂN CỨ",
+  // Nút này chỉ hiện khi verdict = "eligible" (xem app/eligibility/page.tsx), nên nhánh này
+  // trên thực tế không chạy — vẫn khai báo để không phải nới lỏng kiểu bằng cast.
+  legal_answer: "TRA CỨU VĂN BẢN",
 };
 
 /** Sinh file tóm tắt kết quả dạng text ngay trên trình duyệt — không gọi backend. */

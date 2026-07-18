@@ -120,6 +120,55 @@ check(
   r2.last.result.verdict
 );
 
+// ── 5b. ĐỊNH TUYẾN Ý ĐỊNH (bug 2026-07-19: mọi câu hỏi đều rơi vào luồng xét điều kiện) ──
+console.log("\n⑤b Định tuyến ý định — câu hỏi tra cứu KHÔNG được rơi vào luồng xét điều kiện");
+
+const lookup = await ask("So sánh Nghị định 261/2025 và 136/2026");
+check("★ Câu so sánh văn bản → legal_answer", lookup.result.verdict === "legal_answer", lookup.result.verdict);
+check("KHÔNG hỏi ngược tình trạng hôn nhân", !/hôn nhân/i.test(lookup.result.suggestion ?? ""));
+check("Có trích dẫn điều khoản thật", lookup.result.citations.length > 0, `${lookup.result.citations.length} citation`);
+check(
+  "Nội dung nêu đúng cả 2 mốc trần (cũ 20/30/40 → mới 25/35/50)",
+  /25/.test(lookup.result.reason) && /50/.test(lookup.result.reason)
+);
+
+const lookup2 = await ask("Điều kiện về nhà ở trong Nghị định 54/2026 quy định thế nào?");
+check("Câu hỏi nội dung 1 văn bản → legal_answer", lookup2.result.verdict === "legal_answer", lookup2.result.verdict);
+
+// Câu vừa nhắc văn bản VỪA có hồ sơ → phải đi luồng xét điều kiện, không phải tra cứu.
+const mixed = await ask("Tôi độc thân, thu nhập 18 triệu, chưa có nhà, theo Nghị định 136 tôi có mua được không?");
+check(
+  "★ Câu có CẢ hồ sơ lẫn tham chiếu văn bản → vẫn xét điều kiện",
+  mixed.result.verdict === "eligible",
+  mixed.result.verdict
+);
+
+/*
+ * CHỐNG GÁN SAI NGUỒN. Assertion đầu tiên ở đây quá lỏng (chỉ tìm chữ "chưa" trong reason) nên đã
+ * CHO LỌT một lỗi thật: hỏi về Thông tư 09/2021 (không có trong KG), hệ thống trả về nội dung của
+ * 4 nghị định khác kèm 6 trích dẫn mà không nói gì — người đọc sẽ tưởng đó là nội dung TT 09/2021.
+ * Nay assert đúng thứ quan trọng: KHÔNG được trích dẫn văn bản khác như thể trả lời cho văn bản được hỏi.
+ */
+const unknown = await ask("Thông tư 09/2021 quy định gì về nhà ở xã hội?");
+check(
+  "★ Văn bản ngoài KG → KHÔNG trích dẫn văn bản khác thay thế",
+  unknown.result.citations.length === 0,
+  `${unknown.result.citations.length} citation`
+);
+check(
+  "★ Nói rõ chưa có dữ liệu về văn bản được hỏi",
+  /chưa có dữ liệu|chưa được nạp/i.test(unknown.result.reason),
+  unknown.result.headline
+);
+
+// Hỏi 2 văn bản, chỉ 1 có trong KG → phải công bố phần thiếu, không im lặng bỏ qua.
+const partial = await ask("So sánh Nghị định 136/2026 với Thông tư 09/2021");
+check(
+  "★ Hỏi 2 văn bản, 1 ngoài KG → công bố phần không trả lời được",
+  /chưa có dữ liệu/i.test(partial.result.reason),
+  partial.result.reason.slice(0, 80)
+);
+
 // ── 6. Không có knownProfile → hành vi cũ không đổi ───────────────
 console.log("\n⑥ Tương thích ngược (không gửi knownProfile)");
 const legacy = await ask("Tôi độc thân, thu nhập 18 triệu, chưa có nhà ở Bình Dương");
