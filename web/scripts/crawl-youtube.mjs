@@ -193,5 +193,9 @@ async function main() {
 
 main().catch((err) => {
   console.error(`\nLỗi: ${err.message}`);
-  process.exit(1);
+  // Dùng `exitCode` thay vì `process.exit(1)`: process.exit() cắt ngang vòng lặp sự kiện khi
+  // socket của `fetch` chưa đóng xong, làm libuv trên Windows abort với
+  // `Assertion failed: !(handle->flags & UV_HANDLE_CLOSING)` (exit 0xC0000409) — crash này CHE MẤT
+  // thông báo lỗi thật ở trên. Gán exitCode để Node thoát sạch sau khi đóng handle, vẫn trả mã 1.
+  process.exitCode = 1;
 });

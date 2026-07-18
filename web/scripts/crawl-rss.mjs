@@ -117,5 +117,7 @@ async function main() {
 
 main().catch((err) => {
   console.error(`Lỗi: ${err.message}`);
-  process.exit(1);
+  // Xem chú thích cùng vấn đề ở scripts/crawl-youtube.mjs: `process.exit(1)` khi socket `fetch`
+  // chưa đóng làm libuv abort trên Windows và che mất thông báo lỗi thật.
+  process.exitCode = 1;
 });
