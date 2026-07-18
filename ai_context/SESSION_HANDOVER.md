@@ -2,6 +2,27 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 12 — 2026-07-19 (Quy ước: mọi test phải sinh ảnh evidence vào `EVD/`)
+
+**Yêu cầu người dùng:** toàn bộ test phải chụp ảnh evidence tại `EVD/`, và ghi quy ước này vào context dự án.
+
+**Đã làm:**
+1. `web/test-utils/evidence.mjs` — helper dùng chung: `createEvidence()` → `evd.shot(page, nhãn)` → `evd.writeIndex()`. Đánh số tăng dần theo thứ tự thực thi, tên file kèm slug của nhãn, và sinh `EVD/INDEX_<bộ>.md` mô tả **mỗi ảnh chứng minh điều gì** — ảnh không chú thích thì vô dụng với giám khảo. Đường dẫn giải theo gốc dự án, **không hard-code** đường dẫn tuyệt đối.
+2. `verify-ui-rehearsal.mjs` → **24/24, 7 ảnh** (thêm mục ⑥ tra cứu pháp lý qua UI — bug Session 11 nay có cả assertion lẫn evidence).
+3. `verify-multiturn.mjs` → **26/26, 3 ảnh**. File này chạy tầng API nên không có màn hình để chụp; đã thêm mục ⑦ mở trình duyệt chạy lại đúng 3 kịch bản CHỈ file này kiểm, cũng là 3 bằng chứng đáng giá nhất: **sửa thông tin đã khai**, **chống bịa nguồn**, **chống red-team**.
+4. Quy ước ghi vào `PROJECT_STATE.md` (mục "⭐ QUY ƯỚC BẮT BUỘC") + bộ nhớ dài hạn của trợ lý.
+5. Gỡ `EVD/rehearsal/` (ảnh cũ đặt sai chỗ, đã `git rm --cached`).
+
+**Bug tự gây ra khi viết phần chụp UI — và bài học chung cho mọi test sau này:**
+Hàm chụp đợi "số thẻ `<h3>` tăng lên" → **treo tới timeout**. Nguyên nhân: **màn hình rỗng CŨNG có `<h3>`**, và nó biến mất ngay khi có tin nhắn đầu tiên, nên số đếm không bao giờ vượt mốc ban đầu.
+**Sửa tận gốc:** `ResultCard` nay gắn `data-result-card={verdict}`; mọi test đợi/đếm theo `[data-result-card]`. Đã áp dụng cho **cả 2 bộ test** — trước đó `verify-ui-rehearsal.mjs` đếm theo chuỗi verdict trong `<h3>`, cũng sẽ hỏng khi gặp câu trả lời tra cứu pháp lý (loại kết quả này không chứa chuỗi verdict nào).
+
+**1 lỗi UI phát hiện nhờ nhìn ảnh evidence:** nhãn **"Căn cứ:"** vẫn hiện dù không có trích dẫn nào — xảy ra đúng ở màn "chưa có dữ liệu về văn bản này", làm người đọc tưởng bị mất nội dung. Đã ẩn khi `citations.length === 0`. **Đây là lợi ích trực tiếp của việc bắt test chụp ảnh: lỗi này không assertion nào bắt được, chỉ nhìn mới thấy.**
+
+**Verify:** `verify-ui-rehearsal` 24/24 · `verify-multiturn` 26/26 · `tsc` sạch · `lint` 0 lỗi · `next build` 10 route. `EVD/` hiện có 10 ảnh + 2 INDEX, tất cả dựng lại được bằng cách chạy lại test.
+
+---
+
 ## Session 11 — 2026-07-19 (Định tuyến ý định — sửa lỗi "mọi câu hỏi đều rơi vào luồng xét điều kiện")
 
 **Bối cảnh:** Người dùng gửi ảnh chụp lỗi — hỏi "So sánh Nghị định 261/2025 và 136/2026" nhưng hệ thống trả về màn hình xét điều kiện với hồ sơ rỗng và hỏi ngược tình trạng hôn nhân.

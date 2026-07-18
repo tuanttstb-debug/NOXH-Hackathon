@@ -38,7 +38,10 @@ export function ResultCard({
   const visibleCitations = showAllCitations ? result.citations : result.citations.slice(0, 1);
 
   return (
-    <div className="surface-floating overflow-hidden rounded-xl">
+    // `data-result-card` là mốc ổn định cho test đếm số khối kết quả đã render.
+    // Trước đó test đếm thẻ <h3> — nhưng màn hình rỗng CŨNG có <h3>, mà nó biến mất ngay khi có
+    // tin nhắn đầu tiên, nên số h3 không bao giờ vượt mốc ban đầu và test treo tới timeout.
+    <div className="surface-floating overflow-hidden rounded-xl" data-result-card={result.verdict}>
       {/* Result Status Header — cùng cấp bậc thị giác cho cả 3 trạng thái */}
       <div className={cn("flex items-center gap-2.5 border-b px-5 py-4", config.bgClass)}>
         <Icon className={cn("h-5 w-5 shrink-0", config.colorClass)} aria-hidden />
@@ -79,6 +82,10 @@ export function ResultCard({
           </div>
         )}
 
+        {/* Không có trích dẫn thì KHÔNG hiện nhãn rỗng. Trường hợp có thật: câu hỏi tra cứu về văn
+            bản ngoài Knowledge Graph — hệ thống trả lời "chưa có dữ liệu" và đúng là không có căn
+            cứ nào để dẫn; hiện nhãn "Căn cứ:" trống chỉ làm người đọc tưởng bị mất nội dung. */}
+        {result.citations.length > 0 && (
         <div>
           <p className="mb-2 text-xs font-medium text-muted-foreground">
             {isUncertain ? "Văn bản liên quan:" : "Căn cứ:"}
@@ -99,6 +106,7 @@ export function ResultCard({
             </button>
           )}
         </div>
+        )}
 
         {result.suggestion && (
           <div className="flex items-start gap-2 rounded-lg bg-primary/5 px-3.5 py-3">
