@@ -57,6 +57,16 @@ Eligibility Checker (P0 gốc), Project Intelligence, và Public Discourse Filte
 
 ⚠️ **Nếu phiên sau thêm nguồn mới** (Facebook/Threads/TikTok), phải thêm file output tương ứng vào `.gitignore` **trước khi chạy crawl lần đầu**, không phải sau.
 
+### 12. Luồng xét điều kiện chưa phân biệt MUA / THUÊ MUA / THUÊ (phát hiện 2026-07-19)
+Luật Nhà ở **Điều 78 khoản 2** (đã nạp KG, `confidence: verified`): đối tượng nhóm 1, 4, 5, 6, 7, 8, 9, 10, 11 nếu chỉ **THUÊ** nhà ở xã hội thì **KHÔNG phải** đáp ứng điều kiện về nhà ở và thu nhập tại khoản 1.
+
+**Hiện trạng:** `reasoner.ts` luôn áp điều kiện thu nhập + nhà ở cho mọi trường hợp, vì hồ sơ không có trường "hình thức" (mua/thuê mua/thuê). Người muốn **thuê** có thể nhận "Không đủ điều kiện" trong khi luật không đặt điều kiện đó với họ — cùng dạng lỗi với vụ diện tích 15 m² vừa sửa.
+
+**Chưa sửa vì:** cần thêm trường `intendedForm` vào hồ sơ, thêm câu hỏi gợi mở, và viết lại nhánh suy luận — vượt phạm vi "nạp KG" được yêu cầu. Tra cứu pháp lý đã trả lời đúng câu hỏi này rồi, nên không chặn demo.
+
+### 13. NĐ 95/2024 không nạp được — PDF scan ảnh
+`web/lib/Legal/8_ND_95-2024_ok/Nghị-định-95-2024-NĐ-CP.pdf` (6.7 MB) là bản **scan ảnh**, `pypdf` trích ra **0 ký tự**. Cần OCR (Tesseract tiếng Việt) mới đọc được. Đây là giới hạn kỹ thuật, không phải bỏ sót — ghi lại để phiên sau khỏi thử lại bằng cùng cách.
+
 ## Thấp — ghi nhận, không cần xử lý gấp
 
 ### 8. Không có quản lý secret/API key

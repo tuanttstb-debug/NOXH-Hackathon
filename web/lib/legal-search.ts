@@ -26,6 +26,12 @@ const ASPECT_LABELS: Record<string, string> = {
   dieu_kien_nha_o: "Điều kiện nhà ở",
   tham_quyen_xac_nhan: "Thẩm quyền xác nhận",
   he_so_dieu_chinh_cap_tinh: "Hệ số điều chỉnh cấp tỉnh",
+  // Thêm 2026-07-19 khi nạp Luật Nhà ở 27/2023 và các văn bản còn lại.
+  doi_tuong_huong_chinh_sach: "Đối tượng hưởng chính sách",
+  dieu_kien_huong_chinh_sach: "Điều kiện hưởng chính sách",
+  hinh_thuc_ho_tro: "Hình thức hỗ trợ",
+  gia_ban_thue_mua: "Giá bán, giá thuê mua",
+  ho_so_mau_don: "Hồ sơ, mẫu đơn",
 };
 
 export function aspectLabel(aspect: string | undefined): string {

@@ -99,6 +99,17 @@ export function getProvincialCoefficient(residence: string | null): ProvincialCo
 /** Điều kiện nhà ở (Điều 29 NĐ 100/2024, sửa bởi NĐ 54/2026) — 1 điều khoản duy nhất, đang hiệu lực. */
 export const HOUSING_ARTICLE_ID = "art-dieu-29-k1-nd54";
 
+/**
+ * Đường đạt điều kiện nhà ở THỨ HAI — NĐ 100/2024 Điều 29 khoản 2 (vẫn hiệu lực: NĐ 54/2026
+ * Điều 32 chỉ sửa khoản 1). Người ĐÃ CÓ nhà vẫn đủ điều kiện nếu diện tích bình quân đầu người
+ * dưới mức tối thiểu.
+ *
+ * ⚠️ Bỏ qua điều khoản này chính là lỗi SAI LUẬT đã tồn tại tới 2026-07-19: hệ thống trả
+ * "Không đủ điều kiện" cho mọi người có nhà, kể cả người mà luật cho phép mua.
+ */
+export const HOUSING_AREA_ARTICLE_ID = "art-dieu-29-k2-nd100";
+export const MIN_AREA_PER_PERSON_M2 = 15;
+
 export function getThresholdForGroup(group: MaritalGroup): IncomeThreshold | undefined {
   return incomeThresholds.find((t) => t.group === group);
 }

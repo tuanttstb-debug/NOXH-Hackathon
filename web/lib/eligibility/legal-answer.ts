@@ -52,11 +52,12 @@ export function retrieveArticles(question: string): Retrieval {
    *  - "Nghị định 136/2026": backtrack bắt ra "13" ⇒ báo thiếu nhầm "văn bản 13".
    * `(?![\d/])` chặn khớp một phần; so sánh number/year tách rời chặn khớp chuỗi con.
    */
+  // Khớp trên bản ĐÃ KHỬ DẤU: người Việt gõ không dấu rất phổ biến ("nghi dinh 136", "thong tu 05").
   const fullCodes = [...question.matchAll(/(\d{1,3})\s*\/\s*(20\d{2})/g)].map(
     (m) => `${Number(m[1])}/${m[2]}`
   );
   const bareNumbers = [
-    ...question.matchAll(/(?:nghị\s*định|nđ|thông\s*tư|tt|luật)\s*(\d{1,3})(?![\d/])/gi),
+    ...q.matchAll(/(?:nghi\s*dinh|nd|thong\s*tu|tt|luat)\s*(\d{1,3})(?![\d/])/g),
   ].map((m) => String(Number(m[1])));
 
   /** "136/2026/NĐ-CP" → { num: "136", year: "2026" }. Trả null nếu mã không theo dạng số/năm. */

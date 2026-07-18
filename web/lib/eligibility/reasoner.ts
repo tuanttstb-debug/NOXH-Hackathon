@@ -1,6 +1,8 @@
 import type { Citation, EligibilityVerdict } from "@/types/legal";
 import {
   HOUSING_ARTICLE_ID,
+  HOUSING_AREA_ARTICLE_ID,
+  MIN_AREA_PER_PERSON_M2,
   PROVINCIAL_COEFFICIENT_ARTICLE_ID,
   getProvincialCoefficient,
   getThresholdForGroup,
@@ -21,6 +23,12 @@ export interface EligibilityProfile {
   monthlyIncomeVnd: number | null;
   hasOwnHousing: boolean | null;
   residence: string | null;
+  /**
+   * Diện tích nhà ở bình quân đầu người (m² sàn/người) — CHỈ dùng khi `hasOwnHousing === true`.
+   * Có nhà mà chỉ số này < 15 thì VẪN đủ điều kiện về nhà ở (NĐ 100/2024 Điều 29 khoản 2).
+   * Thêm 2026-07-19 để sửa lỗi coi "đã có nhà" là loại trừ tuyệt đối.
+   */
+  housingAreaPerPersonM2: number | null;
 }
 
 export const REQUIRED_FIELD_LABELS: Record<"maritalGroup" | "monthlyIncomeVnd" | "hasOwnHousing", string> = {
@@ -43,6 +51,7 @@ export interface DraftConclusion {
     | "not_eligible_has_housing"
     | "not_eligible_income_over_cap"
     | "insufficient_missing_fields"
+    | "insufficient_housing_area_unknown"
     | "insufficient_unknown_group"
     | "insufficient_threshold_unconfirmed"
     | "insufficient_provincial_coefficient_unknown"
@@ -77,6 +86,7 @@ export function mergeProfile(
     monthlyIncomeVnd: incoming.monthlyIncomeVnd ?? known.monthlyIncomeVnd,
     hasOwnHousing: incoming.hasOwnHousing ?? known.hasOwnHousing,
     residence: incoming.residence ?? known.residence,
+    housingAreaPerPersonM2: incoming.housingAreaPerPersonM2 ?? known.housingAreaPerPersonM2,
   };
 }
 
@@ -102,14 +112,38 @@ export function reasonEligibility(profile: EligibilityProfile): DraftConclusion 
     return { verdict: "insufficient_data", reasonKey: "insufficient_missing_fields", citations: [], missingFields };
   }
 
-  // Điều kiện nhà ở là điều kiện loại trừ tuyệt đối — kiểm tra trước, không cần xét thu nhập nếu đã có nhà.
+  /*
+   * ĐIỀU KIỆN NHÀ Ở CÓ **HAI** ĐƯỜNG ĐẠT (sửa 2026-07-19 — trước đó code SAI LUẬT).
+   * Luật Nhà ở Điều 78 k1 điểm a + NĐ 100/2024 Điều 29:
+   *   - khoản 1: chưa có nhà thuộc sở hữu tại tỉnh nơi có dự án → đạt; HOẶC
+   *   - khoản 2: ĐÃ CÓ nhà nhưng diện tích bình quân đầu người < 15 m² sàn/người → VẪN đạt.
+   * Bản cũ coi "đã có nhà" là loại trừ tuyệt đối nên trả "Không đủ điều kiện" cho cả những người
+   * mà luật cho phép mua. Khoản 2 vẫn hiệu lực: NĐ 54/2026 Điều 32 chỉ sửa khoản 1.
+   */
   if (profile.hasOwnHousing) {
-    const housingCitation = toCitation(HOUSING_ARTICLE_ID);
-    return {
-      verdict: "not_eligible",
-      reasonKey: "not_eligible_has_housing",
-      citations: housingCitation ? [housingCitation] : [],
-    };
+    const area = profile.housingAreaPerPersonM2;
+
+    // Chưa biết diện tích → KHÔNG kết luận. Đây là thiếu dữ liệu thật, không phải căn cứ loại trừ.
+    if (area === null || area === undefined) {
+      const c1 = toCitation(HOUSING_ARTICLE_ID);
+      const c2 = toCitation(HOUSING_AREA_ARTICLE_ID);
+      return {
+        verdict: "insufficient_data",
+        reasonKey: "insufficient_housing_area_unknown",
+        citations: [c1, c2].filter((c): c is Citation => c !== null),
+      };
+    }
+
+    if (area >= MIN_AREA_PER_PERSON_M2) {
+      const housingCitation = toCitation(HOUSING_ARTICLE_ID);
+      const areaCitation = toCitation(HOUSING_AREA_ARTICLE_ID);
+      return {
+        verdict: "not_eligible",
+        reasonKey: "not_eligible_has_housing",
+        citations: [housingCitation, areaCitation].filter((c): c is Citation => c !== null),
+      };
+    }
+    // area < 15 → đạt điều kiện nhà ở theo khoản 2, đi tiếp xét thu nhập như người chưa có nhà.
   }
 
   const threshold = getThresholdForGroup(profile.maritalGroup as MaritalGroup);

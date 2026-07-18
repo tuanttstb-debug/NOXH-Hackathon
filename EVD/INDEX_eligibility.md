@@ -1,7 +1,7 @@
 # Evidence — Eligibility Checker (rehearsal UI)
 
 > Sinh tự động bởi `web/verify-ui-rehearsal.mjs` — chạy lại test là dựng lại toàn bộ ảnh.
-> Cập nhật: 2026-07-18 21:41
+> Cập nhật: 2026-07-18 22:44
 
 1. **Màn hình khởi đầu Eligibility Checker** — `eligibility_01_man-hinh-khoi-dau-eligibility-checker.png`
 2. **TC-02 Không đủ điều kiện — không nêu tỉnh, trần 25 triệu** — `eligibility_02_tc-02-khong-du-dieu-kien-khong-neu-tinh-tran-25-.png`

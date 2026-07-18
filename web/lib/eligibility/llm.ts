@@ -9,6 +9,7 @@ interface RawExtractedProfile {
   thu_nhap_thang_vnd: number | null;
   tinh_trang_nha_o: "chua_co_nha" | "da_co_nha" | null;
   noi_cu_tru_lam_viec: string | null;
+  dien_tich_binh_quan_m2: number | null;
 }
 
 const EXTRACT_SYSTEM_PROMPT = `Bạn là bước trích xuất thông tin (Parse) trong pipeline Eligibility Checker NOXH — bạn KHÔNG kết luận điều kiện thụ hưởng, chỉ chuẩn hoá dữ liệu người dùng nhập thành JSON.
@@ -18,7 +19,8 @@ Trả về DUY NHẤT 1 JSON object, không thêm chữ nào khác, đúng schem
   "tinh_trang_hon_nhan": "doc_than" | "doc_than_nuoi_con" | "da_ket_hon" | null,
   "thu_nhap_thang_vnd": number | null,
   "tinh_trang_nha_o": "chua_co_nha" | "da_co_nha" | null,
-  "noi_cu_tru_lam_viec": string | null
+  "noi_cu_tru_lam_viec": string | null,
+  "dien_tich_binh_quan_m2": number | null
 }
 
 Quy tắc:
@@ -27,6 +29,7 @@ Quy tắc:
 - "da_ket_hon": đã kết hôn, tính thu nhập là TỔNG thu nhập vợ chồng nếu người dùng nêu rõ, nếu chỉ nêu thu nhập cá nhân thì vẫn điền đúng số đó (không tự cộng thêm).
 - "thu_nhap_thang_vnd" là số nguyên đơn vị VNĐ (vd "18 triệu" → 18000000). Nếu không nhắc tới thu nhập, để null.
 - "tinh_trang_nha_o": "da_co_nha" nếu người dùng hoặc vợ/chồng đang sở hữu nhà; "chua_co_nha" nếu nói chưa có nhà; null nếu không đề cập.
+- "dien_tich_binh_quan_m2": diện tích nhà ở BÌNH QUÂN ĐẦU NGƯỜI, đơn vị m² sàn/người, CHỈ điền khi người dùng nói rõ. Nếu người dùng cho tổng diện tích và số người (vd "nhà 40m2, 4 người ở") thì tự chia: 40/4 = 10. Nếu chỉ nói tổng diện tích mà không nói số người, để null. Không đề cập gì thì null.
 - Trường nào người dùng không đề cập, để null — KHÔNG suy đoán, KHÔNG tự điền giá trị mặc định.
 - Không diễn giải, không thêm field khác ngoài schema trên.`;
 
@@ -39,7 +42,13 @@ export async function extractProfile(userText: string): Promise<EligibilityProfi
   const parsed = extractJson<RawExtractedProfile>(raw);
   if (!parsed) {
     // Không suy đoán khi không parse được — coi như mọi trường đều thiếu, bước Validate sẽ trả "Thiếu thông tin".
-    return { maritalGroup: null, monthlyIncomeVnd: null, hasOwnHousing: null, residence: null };
+    return {
+      maritalGroup: null,
+      monthlyIncomeVnd: null,
+      hasOwnHousing: null,
+      residence: null,
+      housingAreaPerPersonM2: null,
+    };
   }
 
   return {
@@ -47,6 +56,7 @@ export async function extractProfile(userText: string): Promise<EligibilityProfi
     monthlyIncomeVnd: parsed.thu_nhap_thang_vnd ?? null,
     hasOwnHousing: parsed.tinh_trang_nha_o === "da_co_nha" ? true : parsed.tinh_trang_nha_o === "chua_co_nha" ? false : null,
     residence: parsed.noi_cu_tru_lam_viec ?? null,
+    housingAreaPerPersonM2: parsed.dien_tich_binh_quan_m2 ?? null,
   };
 }
 
@@ -68,7 +78,8 @@ Nếu verdict là "insufficient_data": giải thích cụ thể đang thiếu/ch
 Diễn giải theo "ly_do_ky_thuat" (chỉ dùng đúng trường hợp được gửi tới, KHÔNG nhắc tới các trường hợp khác):
 - "insufficient_provincial_coefficient_unknown": thu nhập của người dùng CAO HƠN mức trần chung của cả nước, NHƯNG Ủy ban nhân dân cấp tỉnh nơi họ ở có quyền quyết định hệ số điều chỉnh nâng mức trần này lên theo mức sống địa phương. Hệ thống chưa có dữ liệu quyết định của tỉnh đó nên KHÔNG kết luận là không đủ điều kiện. Nói rõ đây là giới hạn dữ liệu của hệ thống, không phải người dùng thiếu thông tin. Gợi ý: liên hệ Sở Xây dựng hoặc UBND tỉnh nơi có dự án để hỏi mức trần áp dụng tại địa phương.
 - "not_eligible_income_over_cap": thu nhập vượt mức trần theo quy định chung của cả nước. Nêu thêm một câu rằng nếu người dùng cho biết tỉnh/thành phố nơi họ định mua thì kết luận có thể khác, vì tỉnh có quyền nâng mức trần theo hệ số địa phương.
-- "not_eligible_has_housing": đã có nhà thuộc sở hữu — đây là điều kiện loại trừ, không phụ thuộc thu nhập.
+- "not_eligible_has_housing": đã có nhà thuộc sở hữu VÀ diện tích bình quân đầu người từ 15 m² sàn/người trở lên. Nói rõ rằng nếu diện tích bình quân dưới 15 m²/người thì vẫn được mua — đây mới là ranh giới thật, KHÔNG nói "có nhà là không được mua".
+- "insufficient_housing_area_unknown": người dùng đã có nhà, NHƯNG luật cho phép người có nhà vẫn mua NOXH nếu diện tích nhà ở bình quân đầu người dưới 15 m² sàn/người. Chưa biết diện tích bình quân nên CHƯA kết luận được. Giải thích cách tính: lấy tổng diện tích sàn chia cho số người đăng ký thường trú tại căn nhà đó (gồm người đứng đơn, vợ/chồng, cha, mẹ và các con). Gợi ý người dùng cho biết diện tích căn nhà và số người cùng thường trú.
 - "insufficient_missing_fields": còn thiếu trường thông tin bắt buộc, liệt kê đúng theo "truong_con_thieu".`;
 
 export interface ComposedAnswer {

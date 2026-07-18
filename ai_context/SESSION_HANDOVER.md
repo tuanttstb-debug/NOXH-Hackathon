@@ -2,6 +2,45 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 13 — 2026-07-19 (Nạp nốt Legal KG — và phát hiện code SAI LUẬT lần thứ hai)
+
+**Yêu cầu:** nạp nốt 10 văn bản còn lại vào Legal KG. Người dùng chốt phạm vi: **chỉ điều khoản liên quan NOXH** (không nạp toàn bộ mọi điều khoản), và **sửa luôn** lỗi sai luật phát hiện trong lúc làm.
+
+### 🔴 Phát hiện quan trọng nhất: code trả kết quả SAI LUẬT cho người có nhà
+`reasoner.ts` coi `hasOwnHousing === true` là điều kiện loại trừ **tuyệt đối** → trả "KHÔNG ĐỦ ĐIỀU KIỆN".
+**Sai.** NĐ 100/2024 **Điều 29 khoản 2**: người ĐÃ CÓ nhà vẫn đủ điều kiện nếu **diện tích bình quân đầu người < 15 m² sàn/người**. Đã đối chiếu toàn văn và xác nhận khoản 2 **vẫn hiệu lực** — NĐ 54/2026 **Điều 32** ghi rõ *"Sửa đổi, bổ sung Điều 29 — Sửa đổi, bổ sung **khoản 1**"*, không đụng khoản 2.
+**Hệ quả thực tế:** hệ thống đã nói "không đủ điều kiện" với đúng nhóm người nghèo nhất — có nhà nhưng chật. Đây là **lần thứ hai** dự án sai luật vì thiếu văn bản trong KG (lần đầu: ngưỡng 30/40tr, xem TECH_DEBT #4).
+
+**Đã sửa:** thêm `housingAreaPerPersonM2` vào hồ sơ; có nhà mà chưa biết diện tích → **hỏi lại** (`insufficient_housing_area_unknown`) thay vì kết luận; < 15 m²/người → xét tiếp thu nhập như người chưa có nhà; ≥ 15 → không đủ, kèm trích dẫn CẢ hai khoản.
+
+**Phát hiện thứ hai (chưa hiện thực hoá):** Luật Nhà ở **Điều 78 khoản 2** — đối tượng chỉ **THUÊ** NOXH thì **không phải** đáp ứng điều kiện nhà ở và thu nhập. Hệ thống hiện luôn áp điều kiện thu nhập. Đã nạp điều khoản vào KG nên tra cứu trả lời đúng, nhưng **luồng xét điều kiện chưa phân biệt mua/thuê mua/thuê** — ghi vào TECH_DEBT #12.
+
+### Đã nạp vào KG (đối chiếu toàn văn, `confidence: verified`)
+| Văn bản | Điều khoản | Vì sao |
+|---|---|---|
+| Luật 27/2023 | Điều 76, 77, 78 | KG có văn bản này nhưng **0 điều khoản**, dù cả 4 nghị định đều dẫn "khoản 5, 6, 8 Điều 76" — lỗ hổng lớn nhất |
+| NĐ 100/2024 | Điều 29 khoản 2 | ⭐ điều khoản gây lỗi sai luật ở trên |
+| NĐ 192/2025 | Điều 13 | giá bán/thuê mua, nghĩa vụ công khai giá |
+| NĐ 302/2025 | Điều 19 | đối tượng thuê nhà của Quỹ nhà ở quốc gia |
+| TT 08/2026 | Điều 1 khoản 1 | mẫu đơn theo từng nhóm đối tượng |
+
+**KHÔNG nạp, có lý do:** Luật 29/2023 + NĐ 96/2024 (kinh doanh BĐS, không phải NOXH); TT 09/2025 (sắp xếp bộ máy). **NĐ 95/2024 KHÔNG nạp được** — PDF scan ảnh, `pypdf` trích ra **0 ký tự**, cần OCR. Đây là giới hạn kỹ thuật thật, không phải bỏ sót.
+
+**Công cụ trích xuất:** `pypdf` cho PDF, giải nén zip + strip XML cho DOCX. Lưu ý: **14 văn bản nằm trong 14 THƯ MỤC CON** (`1_Luat_27-2023_ok`, ...), không nằm phẳng — script duyệt không đệ quy sẽ ra 0 file (đã mắc).
+
+### 3 bug khác tự phát hiện
+1. **Định tuyến ý định hỏng với input KHÔNG DẤU.** Regex khớp chuỗi có dấu, nên "Dieu 76 Luat Nha o..." rơi nhầm vào luồng xét điều kiện. Người Việt gõ không dấu rất phổ biến. Đã khử dấu trước khi khớp, ở **cả** `intent.ts` lẫn `legal-answer.ts`.
+2. **Câu hỏi quy định chung không có tham chiếu văn bản** ("Thuê NOXH có cần điều kiện thu nhập không?") cũng rơi nhầm. Đã thêm luật: hỏi về quy định + **không có đại từ ngôi thứ nhất** → tra cứu. Có "tôi/mình/em" → giữ luồng xét điều kiện.
+3. **Helper evidence không dọn ảnh cũ** — chèn thêm kịch bản làm đánh số lại, ảnh lần trước ở lì với tên cũ, không có trong INDEX. Đã xoá theo tiền tố bộ test trước mỗi lần chạy.
+
+**1 lỗi nội dung phát hiện nhờ nhìn ảnh evidence:** checklist ghi "Giấy xác nhận **chưa có nhà ở**" cho cả người đủ điều kiện theo đường diện tích — tức đưa **sai danh mục giấy tờ**. Đã viết lại nêu cả 2 đường (Văn phòng đăng ký đất đai vs UBND cấp xã) và mẫu đơn theo TT 08/2026.
+
+**1 assertion chập chờn của tôi:** assert từ ngữ trong `reason` do LLM sinh → pass lần 1, fail lần 2 với cùng câu hỏi. Đã đổi sang assert vào `citations` (phần code truy xuất, xác định). **Quy tắc: không assert vào văn LLM sinh.**
+
+**Verify:** `verify-multiturn` **34/34** (thêm mục ⑤c diện tích nhà ở, ⑤d tra cứu văn bản mới) · `verify-ui-rehearsal` **24/24** · `tsc` · `lint` · `build` sạch · **11 ảnh evidence**.
+
+---
+
 ## Session 12 — 2026-07-19 (Quy ước: mọi test phải sinh ảnh evidence vào `EVD/`)
 
 **Yêu cầu người dùng:** toàn bộ test phải chụp ảnh evidence tại `EVD/`, và ghi quy ước này vào context dự án.

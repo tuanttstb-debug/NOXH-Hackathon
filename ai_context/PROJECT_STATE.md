@@ -76,7 +76,13 @@ Người dùng đã cung cấp **14 văn bản gốc** (PDF/DOCX) tại `web/lib
 | Nghị định 54/2026 (Điều 29 k1 — nhà ở; Điều 30 k2 — thẩm quyền) | ✅ | `verified` |
 | Nghị định 261/2025 (Điều 30 k1–2 — đã hết hiệu lực, giữ để tra lịch sử) | ✅ | `verified` |
 | Nghị định 100/2024 (Điều 29 k1 — bản gốc, đã bị sửa) | ✅ | `pending` (chưa đối chiếu toàn văn) |
-| 10 văn bản còn lại (Luật 27/2023, Luật 29/2023, NĐ 95/96/192/302, TT 05/09/32/08) | ❌ | Quyết định có chủ đích — không phục vụ P0 |
+| Luật Nhà ở 27/2023 (Điều 76 đối tượng, 77 hình thức, 78 điều kiện) | ✅ nạp 2026-07-19 | `verified` |
+| NĐ 192/2025 (Điều 13 giá bán/thuê mua) · NĐ 302/2025 (Điều 19 Quỹ nhà ở) · TT 08/2026 (Điều 1 mẫu đơn) | ✅ nạp 2026-07-19 | `verified` |
+| Luật 29/2023, NĐ 96/2024, TT 09/2025 | ❌ có chủ đích | Kinh doanh BĐS / sắp xếp bộ máy — không phải nội dung NOXH |
+| NĐ 95/2024 | ❌ **không nạp được** | PDF scan ảnh, trích ra 0 ký tự, cần OCR — xem TECH_DEBT #13 |
+
+**⚠️ Điều kiện nhà ở có HAI đường đạt (sửa 2026-07-19 — trước đó code SAI LUẬT):**
+NĐ 100/2024 Điều 29 **khoản 1** (chưa có nhà, sửa bởi NĐ 54/2026) **HOẶC** **khoản 2** (đã có nhà nhưng diện tích bình quân **< 15 m² sàn/người**). Khoản 2 vẫn hiệu lực — NĐ 54/2026 Điều 32 chỉ sửa khoản 1. Code cũ coi "đã có nhà" là loại trừ tuyệt đối và trả "Không đủ điều kiện" cho cả nhóm mà luật cho phép. **Đừng gộp lại thành một điều kiện.**
 
 **Mức trần thu nhập hiện hành** (NĐ 136/2026, Điều 30 khoản 1, hiệu lực 2026-04-07 — thay thế toàn bộ khoản 1):
 độc thân **25tr** (điểm a) · độc thân nuôi con **35tr** (điểm a) · đã kết hôn, tổng hai vợ chồng **50tr** (điểm b).

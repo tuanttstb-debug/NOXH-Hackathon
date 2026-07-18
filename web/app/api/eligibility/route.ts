@@ -214,12 +214,28 @@ export async function POST(req: Request) {
     { label: "Nơi cư trú", value: profile.residence ?? "(chưa cung cấp)" },
   ];
 
+  // Chỉ hiện diện tích khi người dùng ĐÃ CÓ nhà — với người chưa có nhà thì trường này vô nghĩa
+  // và hiện ra chỉ làm rối (điều kiện diện tích chỉ áp dụng cho trường hợp đã sở hữu nhà).
+  if (profile.hasOwnHousing === true) {
+    extractedFields.push({
+      label: "Diện tích bình quân",
+      value:
+        profile.housingAreaPerPersonM2 != null
+          ? `${profile.housingAreaPerPersonM2} m²/người`
+          : "(chưa cung cấp)",
+    });
+  }
+
   // Hỏi lại đúng trường còn thiếu ĐẦU TIÊN — hỏi từng câu một, không dồn 3 câu cùng lúc
   // (dồn lại khiến người dùng bỏ sót và quay về đúng trạng thái bế tắc trước đây).
   const followUpQuestion =
     draft.verdict === "insufficient_data" && draft.missingFields?.length
       ? FOLLOW_UP_QUESTIONS[draft.missingFields[0]] ?? null
-      : null;
+      : draft.reasonKey === "insufficient_housing_area_unknown"
+        ? // Có nhà nhưng chưa biết diện tích bình quân — hỏi đúng thứ còn thiếu để kết luận được,
+          // thay vì dừng ở "không đủ điều kiện" như bản cũ (vốn sai luật).
+          "Căn nhà hiện tại của bạn rộng khoảng bao nhiêu m², và có mấy người cùng đăng ký thường trú ở đó?"
+        : null;
   if (followUpQuestion) {
     result.suggestion = followUpQuestion;
   }

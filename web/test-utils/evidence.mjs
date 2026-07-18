@@ -10,7 +10,7 @@
  * `EVD/INDEX.md` để người xem biết mỗi ảnh chứng minh điều gì — ảnh không có chú thích thì vô dụng
  * với giám khảo.
  */
-import { mkdirSync, writeFileSync } from "fs";
+import { mkdirSync, writeFileSync, readdirSync, unlinkSync } from "fs";
 import { join, dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -25,6 +25,20 @@ export const EVD_DIR = join(PROJECT_ROOT, "EVD");
  */
 export function createEvidence(suiteName, suiteTitle, scriptName = `verify-${suiteName}.mjs`) {
   mkdirSync(EVD_DIR, { recursive: true });
+
+  /*
+   * Xoá ảnh CŨ của đúng bộ test này trước khi chạy.
+   * Vì sao cần: số thứ tự gắn theo trình tự thực thi, nên chỉ cần chèn thêm một kịch bản ở giữa là
+   * các ảnh sau bị đánh số lại — ảnh của lần chạy trước ở lì lại với tên cũ, không nằm trong INDEX,
+   * và người xem không phân biệt được đâu là ảnh hiện hành. Đã xảy ra thật 2026-07-19.
+   * Chỉ xoá theo tiền tố của bộ này, không đụng ảnh của bộ khác.
+   */
+  for (const f of readdirSync(EVD_DIR)) {
+    if (f.startsWith(`${suiteName}_`) && f.endsWith(".png")) {
+      unlinkSync(join(EVD_DIR, f));
+    }
+  }
+
   const entries = [];
   let counter = 0;
 
