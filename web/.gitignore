@@ -23,3 +23,12 @@ yarn-error.log*
 ## typescript
 *.tsbuildinfo
 next-env.d.ts
+
+## Dữ liệu mạng xã hội thu thập được — KHÔNG commit.
+## Đây là bài đăng/bình luận của người thật, kèm URL định danh được tài khoản của họ; nhiều bài kể
+## chi tiết hoàn cảnh riêng. Commit lên GitHub là tái xuất bản dữ liệu cá nhân sang nơi họ không hề
+## đăng lên. Lưu ý `redactPii()` (lib/discourse/analyze.ts) chỉ chạy lúc PHÂN TÍCH — crawler ghi
+## text THÔ chưa che xuống đĩa, nên các file này không an toàn để công khai.
+## Tái tạo bằng: node scripts/crawl-youtube.mjs
+/data/discourse/youtube-posts.json
+/data/discourse/manual-posts.json

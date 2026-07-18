@@ -18,7 +18,11 @@
 > Hai việc `docs/12_QUAN_LY_RUI_RO.md` và `docs/11_KICH_BAN_DEMO.md` từng ghi ở đây **đã được sửa ở Session 7** — mục này trước đó lỗi thời, đã gỡ.
 
 ### Việc ngay tiếp theo
-- **Bạn cung cấp `YOUTUBE_API_KEY`** → chạy `cd web && node scripts/crawl-youtube.mjs`. Đây là bước **duy nhất** còn thiếu để có dữ liệu sinh được cảnh báo P1 — RSS báo chí đã xác nhận không sinh P1 (đúng thiết kế: báo chính thống có dẫn nguồn, không dùng ngôn ngữ tuyệt đối). Hướng dẫn lấy key: `web/data/discourse/HUONG_DAN_YOUTUBE_API.md`.
+- ~~Cung cấp `YOUTUBE_API_KEY` → chạy crawler~~ → ✅ **xong 2026-07-18 (Session 9): 205 bình luận / 60 video.**
+- **QUYẾT ĐỊNH CẦN NGƯỜI DÙNG — số phận Public Discourse Filter.** Đã chạy thật trên 216 bài: **0 P1**, và đã chứng minh **rule không hỏng** (dữ liệu dựng riêng kích hoạt P1 đúng). Nguyên nhân là bản chất dữ liệu: bình luận YouTube dưới video chính sách chủ yếu là **câu hỏi cá nhân**, không phải khẳng định sai lệch; thêm nữa `surging` cần claim xuất hiện ở **2 channel** mà ta chỉ có YouTube + báo chí. Ba hướng:
+  1. **Bổ sung nguồn Facebook/Threads** qua `web/data/discourse/manual-posts.json` (dán tay 30–50 bài) — đây là nơi tin sai lệch NOXH thực sự sống, và là hướng duy nhất có khả năng sinh P1 thật.
+  2. **Trình bày trung thực**: "quét 216 bài, không phát hiện tin sai lệch lan nhanh" là **kết quả hợp lệ**, kèm bằng chứng rule hoạt động. Trung thực hơn là ép dữ liệu ra P1.
+  3. Cắt module khỏi demo nếu thời gian còn lại eo hẹp.
 - Khuyến nghị **rotate lại `MKP_API_KEY`** trên FPT AI Marketplace dashboard — key hiện tại đã bị dán trực tiếp vào chat nên coi như đã lộ, dù đã nằm trong `web/.env.local` (gitignored, không commit).
 - **Bộ ảnh `EVD/` đã mất** — thư mục chỉ còn 3 ảnh rehearsal của Session 9. 20 ảnh gốc `EVD/01`–`20` mà `PROJECT_STATE.md` tham chiếu không còn tồn tại (chưa từng commit nên không khôi phục được từ git). Nếu cần cho bài demo/nộp bài, chạy lại `web/screenshot.mjs` — lưu ý script trỏ `localhost:3001` và cần Chrome mở sẵn debug port 9222.
 

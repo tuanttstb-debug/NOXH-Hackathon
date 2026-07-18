@@ -48,6 +48,15 @@ Người dùng cung cấp 14 văn bản gốc tại `web/lib/Legal/`. Đã đố
 Eligibility Checker (P0 gốc), Project Intelligence, và Public Discourse Filter đều có tài liệu thiết kế đầy đủ nhưng **0% dữ liệu/code chung**. 2 module sau phụ thuộc lẫn nhau (node `Project`/`HousingProject` dùng chung) và phụ thuộc vào Legal KG của module đầu — nếu một phiên làm việc sau này bắt đầu code cho Project Intelligence hoặc Public Discourse Filter trước khi Legal KG của Eligibility Checker tồn tại thật, sẽ phải xây tạm 1 phiên bản Legal KG khác rồi hợp nhất lại sau — lãng phí công sức đã được cảnh báo trước ở `../docs/technical/07_IMPLEMENTATION_PLAN.md`.
 **Vì sao chưa xử lý:** Đây là hệ quả của việc lập kế hoạch song song cho nhiều module (được yêu cầu tường minh, không phải tự phát sinh) — không phải lỗi, nhưng cần người điều phối (chủ dự án) xác nhận thứ tự trước khi bất kỳ phiên nào bắt đầu code cho module thứ 2/3.
 
+### 11. Crawler ghi PII thô xuống đĩa — `redactPii()` chạy quá muộn (phát hiện 2026-07-18, Session 9)
+`redactPii()` (`lib/discourse/analyze.ts:60`) được thiết kế chạy **trước khi text đi tới LLM hay log** — nhưng `scripts/crawl-youtube.mjs` ghi **text THÔ chưa che** thẳng vào `data/discourse/youtube-posts.json`. Có khoảng hở giữa nguyên tắc đã tuyên bố và thứ thật sự nằm trên đĩa.
+
+**Mức độ thật:** 205 bình luận thu được là của người thật, kèm `url` trỏ thẳng tới tài khoản của họ; nhiều bài kể chi tiết hoàn cảnh riêng (người thân qua đời, tranh chấp thừa kế, tình trạng sổ đỏ). Quét thấy 1 SĐT + 1 chuỗi giống số giấy tờ.
+
+**Đã giảm thiểu, CHƯA sửa gốc:** thêm `youtube-posts.json` + `manual-posts.json` vào `web/.gitignore` (người dùng chọn phương án này) — dữ liệu không lên GitHub nhưng **vẫn nằm thô trên máy**. Sửa gốc là gọi `redactPii()` trong crawler trước khi `writeFile`. Chưa làm vì cần cân nhắc: che ở tầng lưu trữ thì mất khả năng đối chiếu lại text gốc khi người kiểm chứng mở URL.
+
+⚠️ **Nếu phiên sau thêm nguồn mới** (Facebook/Threads/TikTok), phải thêm file output tương ứng vào `.gitignore` **trước khi chạy crawl lần đầu**, không phải sau.
+
 ## Thấp — ghi nhận, không cần xử lý gấp
 
 ### 8. Không có quản lý secret/API key

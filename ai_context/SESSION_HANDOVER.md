@@ -18,9 +18,20 @@
 
 **Phát hiện cần người dùng biết:** thư mục `EVD/` **chỉ còn 3 file** (ảnh rehearsal vừa tạo). **20 ảnh evidence gốc `EVD/01`–`20` mà `PROJECT_STATE.md` tham chiếu không còn tồn tại** — không rõ bị xoá lúc nào (chưa từng được commit nên không truy được). Không tự tạo lại vì đó là evidence của các phiên trước. Nếu cần cho demo, chạy lại `web/screenshot.mjs` (lưu ý script này trỏ `localhost:3001` và cần Chrome mở sẵn port 9222).
 
-**Dừng ở đâu:** Session 8 + 9 đã commit và push. P0 **hoàn tất 6/6**.
+5. **✅ Crawl YouTube chạy thật lần đầu — 205 bình luận.** Bước cuối cùng còn thiếu của Session 8.
+   - **Chẩn đoán key mất nhiều lượt vì tôi sai quy trình:** API trả `API_KEY_SERVICE_BLOCKED` suốt 4 lượt. Tôi đi truy vết cấu hình Google Cloud (bật API, restriction trên key) trong khi nguyên nhân thật là **`.env.local` chưa hề được lưu** — key trong file không đổi suốt 55 phút. **Bài học: khi người dùng nói "đã cập nhật key", việc ĐẦU TIÊN phải là in vân tay key trong file và so với lần trước**, chứ không phải gọi API rồi suy diễn từ mã lỗi. Đã áp dụng và phát hiện ra ngay.
+   - Phân biệt 2 mã lỗi Google (hữu ích cho lần sau): `SERVICE_DISABLED` = API chưa bật trên project; `API_KEY_SERVICE_BLOCKED` = API đã bật nhưng key bị chặn service. Ta gặp cái thứ hai.
+   - Chạy `--max-videos 60 --max-comments 100`: **205 bình luận / 60 video**, tốn **3/100 search · 60/10.000 unit**. Nhiều kênh báo tắt bình luận nên ~40 video trả 0.
+6. **Chạy pipeline trên dữ liệu thật: 216 bài → 63 qua bộ lọc → 59 claim → 0 P1.**
+   **Đã chứng minh "0 P1" là kết quả THẬT, không phải rule hỏng:** bơm 6 bài dựng riêng (cùng nội dung sai lệch, 2 channel, ngôn ngữ tuyệt đối) → **P1 kích hoạt đúng** (`surging`, 5 lượt/2 kênh). Rule chạy tốt.
+   **Lý do thật — phát hiện quan trọng nhất về module này:** bình luận dưới video chính sách NOXH gần như toàn là **câu hỏi về hoàn cảnh cá nhân** ("sổ đỏ đứng tên bà nội chồng thì có mua được không?"), người ta **hỏi** chứ không **khẳng định**. Bộ lọc lại được thiết kế để bắt khẳng định sai lệch lan nhanh.
+   **Rào cấu trúc:** `surging` cần `spreadBreadth >= 2` (`analyze.ts:74`) = cùng claim xuất hiện ở 2 channel. Chỉ có YouTube + báo chí thì gần như bất khả. **Muốn module có tín hiệu thật phải có nguồn thứ 3** (Facebook/Threads qua `manual-posts.json`) — đó mới là nơi tin sai lệch NOXH thực sự sống.
+   **Khiếm khuyết đo được:** 6 bài **giống hệt nhau từng ký tự** vẫn tách thành 2 claim (5+1) — clustering không ổn định kể cả với input trùng khớp tuyệt đối. Cụ thể hơn ghi chú Session 7.
+7. **Quyết định bảo mật dữ liệu:** `youtube-posts.json` (205 bình luận người thật, kèm URL định danh tài khoản, nhiều bài kể chi tiết hoàn cảnh riêng; quét thấy 1 SĐT + 1 chuỗi giống số giấy tờ) **đã đưa vào `.gitignore`** cùng `manual-posts.json`. Người dùng chọn phương án này. Lý do: `redactPii()` chỉ chạy lúc PHÂN TÍCH, còn crawler ghi text THÔ xuống đĩa — commit lên GitHub là tái xuất bản dữ liệu cá nhân. `youtube-video-cache.json` vẫn commit (metadata video công khai, và giúp lần sau `--no-search` khỏi tốn bucket).
 
-**Việc tiếp theo:** (1) `YOUTUBE_API_KEY` → chạy `crawl-youtube.mjs`, bước duy nhất còn thiếu để có dữ liệu sinh được P1; (2) dữ liệu dự án → `web/lib/Projects/`; (3) dashboard UI Discourse Filter (sau khi có dữ liệu thật); (4) rotate `MKP_API_KEY`; (5) cân nhắc dựng lại bộ ảnh `EVD/`.
+**Dừng ở đâu:** Session 8 + 9 đã commit và push. P0 **hoàn tất 6/6**. Crawler YouTube đã chạy thật.
+
+**Việc tiếp theo:** (1) **quyết định số phận Public Discourse Filter** — YouTube đã chứng minh không sinh được P1 vì bản chất dữ liệu; hoặc bổ sung nguồn Facebook/Threads qua `manual-posts.json`, hoặc trình bày trung thực với giám khảo rằng "không có tin sai lệch lan nhanh" chính là kết quả hợp lệ; (2) dữ liệu dự án → `web/lib/Projects/`; (3) dashboard UI Discourse Filter; (4) rotate `MKP_API_KEY`; (5) cân nhắc dựng lại bộ ảnh `EVD/`.
 
 ---
 
