@@ -33,6 +33,16 @@ Bộ tài liệu dự án, khởi tạo 17/07/2026. Mỗi file là Single Source
 ## Tri thức chuyên sâu (build)
 Nằm ở `../knowledge/` (không lặp lại ở đây) — xem `../knowledge/README.md` để biết ontology, đặc tả agent, prompt nháp, hồ sơ từng văn bản luật, test case.
 
+## Đề xuất mở rộng (chưa build, ngoài scope Eligibility Checker P0)
+Nằm ở `features/` — mỗi file là 1 module đề xuất, **độc lập về tài liệu nhưng phụ thuộc lẫn nhau về dữ liệu** (xem cảnh báo ở `00_PROJECT_MEMORY.md`).
+
+| File | Nội dung | Trạng thái |
+|---|---|---|
+| `features/PROJECT_INTELLIGENCE.md` | BRD + Solution Design — báo cáo tổng hợp đa nguồn (pháp lý/tiến độ/CĐT/tin tức) cho 1 dự án NOXH cụ thể | Draft v1.0. Technical Discovery đã xong — 10 file ở `technical/` |
+| `features/PUBLIC_DISCOURSE_FILTER.md` | Bộ lọc phát hiện & gắn cờ claim sai lệch/lan nhanh về chính sách NOXH trên mạng xã hội (Facebook/diễn đàn) — chỉ phát hiện + gắn cờ, KHÔNG tự động xác minh/publish | MVP Scope v1.0 rút gọn cho "36h còn lại" (tự nêu trong tài liệu — chưa rõ có cùng mốc giờ với Eligibility Checker/Project Intelligence không, xem OPEN QUESTION bên dưới). Chưa có Technical Discovery riêng — tài liệu gốc đã tự rút gọn đủ chi tiết để build thẳng |
+
+`technical/` chứa 10 file Technical Discovery (01–10) cho riêng `PROJECT_INTELLIGENCE.md`, theo yêu cầu "không viết code, chỉ discovery trước triển khai". Đọc `technical/10_TECHNICAL_DECISION.md` trước nếu chỉ có ít thời gian.
+
 ## UI/UX (thiết kế, chưa code)
 Nằm ở `UI/` — đọc tuần tự 01→11: UI Review, Information Architecture, User Journey, Sitemap, Screen List, Low-Fidelity Wireframe, Design System, Component Spec, High-Fidelity Screens, **AI-Native UX Review, AI-Native Redesign**. File `11` là bản thiết kế điều hướng mới nhất (thread-based, thay 7-màn-hình tuần tự của `06`/`09`) — dùng `11` làm nguồn chính khi dựng UI thật cho luồng Người dân. Vẫn chưa có code/CSS thật.
 
@@ -43,6 +53,8 @@ Nằm ở `UI/` — đọc tuần tự 01→11: UI Review, Information Architect
 4. **[04]** Persona "anh Minh — công nhân khu công nghiệp" có đúng nhóm ưu tiên không?
 5. **[06]** Agent có cần hỏi lại người dùng khi thiếu thông tin (multi-turn) hay chỉ báo và dừng?
 6. **[11]** Thời lượng demo cho phép trước giám khảo là bao lâu?
+7. **[features/PUBLIC_DISCOURSE_FILTER.md]** Tài liệu tự ghi "36 giờ còn lại" — đây có phải cùng một mốc đồng hồ hackathon với Eligibility Checker (48h) và Project Intelligence không, hay là ngân sách giờ riêng cho module này? Ảnh hưởng trực tiếp việc có nên bắt đầu module này song song hay tuần tự với 2 module kia.
+8. **[features/PUBLIC_DISCOURSE_FILTER.md] + [features/PROJECT_INTELLIGENCE.md]** Cả 2 module đề xuất đều phụ thuộc dữ liệu lẫn nhau (`HousingProject` dùng chung node `Project`, `CLAIM_CITES_DOCUMENT` cần Legal KG) — nhưng cả 3 nền tảng dữ liệu (Legal KG, Project KG, SocialPost/PublicClaim KG) đều **0% hiện thực hoá**. Cần chủ dự án xác nhận thứ tự làm trước-sau, không để 3 module cùng "đang làm dở" một lúc.
 
 ## Chưa làm
 Chưa sinh code, chưa thiết kế giao diện chi tiết, chưa sinh API — tài liệu kiến trúc (05–09) mô tả ở mức khái niệm, làm căn cứ cho bước code sau khi các câu hỏi trên được trả lời.

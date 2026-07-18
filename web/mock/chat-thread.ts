@@ -1,63 +1,47 @@
 import type { ChatMessage, QuickSkill, HistoryItem } from "@/types/chat";
+import type { Citation } from "@/types/legal";
 import { legalDocuments, legalArticles } from "@/mock/legal-documents";
 
-const docByCode = (code: string) => legalDocuments.find((d) => d.code === code)!;
+/**
+ * Dựng Citation từ articleId, lấy nhãn/ngày hiệu lực/độ tin cậy TRỰC TIẾP từ Legal KG.
+ * Trước 2026-07-18 các citation trong file này hard-code lại nhãn + `confidence` nên lệch khỏi KG
+ * mỗi khi dữ liệu pháp lý được cập nhật — đã xảy ra thật khi đối chiếu toàn văn NĐ 136/2026.
+ * Dẫn xuất từ một nguồn duy nhất để lỗi lệch đó không tái diễn.
+ */
+function cite(articleId: string): Citation {
+  const article = legalArticles.find((a) => a.id === articleId);
+  if (!article) throw new Error(`Mock chat-thread: không tìm thấy điều khoản "${articleId}" trong Legal KG.`);
+  const doc = legalDocuments.find((d) => d.id === article.documentId);
+  if (!doc) throw new Error(`Mock chat-thread: không tìm thấy văn bản "${article.documentId}" trong Legal KG.`);
+  return {
+    articleId: article.id,
+    documentCode: doc.code,
+    documentTitle: doc.title,
+    articleLabel: article.label,
+    effectiveDate: article.effectiveDate,
+    confidence: article.confidence,
+    sourceUrl: doc.sourceUrl,
+  };
+}
 
-const citationDieu30_136 = {
-  articleId: "art-dieu-30-nd136",
-  documentCode: "136/2026/NĐ-CP",
-  documentTitle: docByCode("136/2026/NĐ-CP").title,
-  articleLabel: "Điều 30 (sửa đổi mức trần độc thân)",
-  effectiveDate: "2026-04-07",
-  confidence: "pending" as const,
-  sourceUrl: docByCode("136/2026/NĐ-CP").sourceUrl,
-};
+const citationDieu30_136 = cite("art-dieu-30-nd136");
+const citationDieu30_k1d = cite("art-dieu-30-k1d-nd136");
+const citationDieu29_54 = cite("art-dieu-29-k1-nd54");
+const citationDieu29_100 = cite("art-dieu-29-k1-nd100");
 
-const citationDieu29_54 = {
-  articleId: "art-dieu-29-k1-nd54",
-  documentCode: "54/2026/NĐ-CP",
-  documentTitle: docByCode("54/2026/NĐ-CP").title,
-  articleLabel: "Điều 29, Khoản 1 (sửa đổi)",
-  effectiveDate: "2026-02-09",
-  confidence: "pending" as const,
-  sourceUrl: docByCode("54/2026/NĐ-CP").sourceUrl,
-};
-
-const citationDieu30_261 = {
-  articleId: "art-dieu-30-nd261",
-  documentCode: "261/2025/NĐ-CP",
-  documentTitle: docByCode("261/2025/NĐ-CP").title,
-  articleLabel: "Điều 30, Khoản 1–2 (sửa đổi)",
-  effectiveDate: "2025-10-10",
-  confidence: "pending" as const,
-  sourceUrl: docByCode("261/2025/NĐ-CP").sourceUrl,
-};
-
-const nd100 = legalDocuments.find((d) => d.code === "100/2024/NĐ-CP");
-
-const citationDieu29_100 = {
-  articleId: "art-dieu-29-k1-nd100",
-  documentCode: "100/2024/NĐ-CP",
-  documentTitle: nd100?.title ?? "Quy định chi tiết phát triển và quản lý nhà ở xã hội",
-  articleLabel: "Điều 29, Khoản 1 — Điều kiện nhà ở",
-  effectiveDate: "2024-08-01",
-  confidence: "pending" as const,
-  sourceUrl: nd100?.sourceUrl ?? "https://vanban.chinhphu.vn/?pageid=27160&docid=210760",
-};
-
-/** TC-02: Vợ chồng thu nhập 45 triệu — vượt trần 40 triệu (NĐ 261/2025). */
+/** Vợ chồng thu nhập 55 triệu — vượt trần 50 triệu (NĐ 136/2026, Điều 30 k1 điểm b). */
 export const notEligibleResult = {
   verdict: "not_eligible" as const,
   headline: "KHÔNG ĐỦ ĐIỀU KIỆN mua Nhà ở xã hội",
   reason:
-    "Tổng thu nhập của hộ gia đình (45 triệu/tháng) vượt mức trần cho phép với người đã kết hôn. Để đủ điều kiện, tổng thu nhập vợ chồng không được vượt 40 triệu/tháng.",
+    "Tổng thu nhập của hộ gia đình (55 triệu/tháng) vượt mức trần cho phép với người đã kết hôn. Để đủ điều kiện, tổng thu nhập vợ chồng không được vượt 50 triệu/tháng theo quy định chung của cả nước.",
   threshold: {
     label: "Tổng thu nhập vợ chồng so với ngưỡng cho phép",
-    userValue: 45,
-    limitValue: 40,
+    userValue: 55,
+    limitValue: 50,
     unit: "triệu đ/tháng",
   },
-  citations: [citationDieu30_136, citationDieu30_261],
+  citations: [citationDieu30_136, citationDieu30_k1d],
   suggestion:
     "Bạn có muốn tìm hiểu các hình thức mua nhà ở thương mại phù hợp với mức thu nhập này không?",
 };
@@ -75,7 +59,8 @@ export const hasHouseResult = {
 
 /**
  * Kịch bản demo — đối chiếu knowledge/evaluation/eligibility_test_cases.md
- * TC-01 (Đủ điều kiện) nối tiếp TC-04 (Thiếu thông tin, vùng chồng lấp dữ liệu).
+ * TC-01 (Đủ điều kiện) nối tiếp TC-04 (Thiếu thông tin — hệ số điều chỉnh cấp tỉnh).
+ * Nội dung m4 khớp với output THẬT của `/api/eligibility` (chạy 2026-07-18), không phải văn bịa.
  */
 export const initialThread: ChatMessage[] = [
   {
@@ -97,7 +82,7 @@ export const initialThread: ChatMessage[] = [
       { label: "Xác định nhóm đối tượng: độc thân chưa kết hôn", status: "done" },
       { label: "Đối chiếu Điều 29 — điều kiện nhà ở (NĐ 54/2026)", status: "done" },
       { label: "Đối chiếu Điều 30 — điều kiện thu nhập (NĐ 136/2026)", status: "done" },
-      { label: "Kiểm tra chồng lấp dữ liệu giữa các văn bản sửa đổi", status: "done" },
+      { label: "Fact-Check: xác nhận điều khoản đang hiệu lực", status: "done" },
     ],
     result: {
       verdict: "eligible",
@@ -118,30 +103,36 @@ export const initialThread: ChatMessage[] = [
   {
     id: "m3",
     role: "user",
-    text: "Nếu tôi có thêm một người con thì sao?",
+    text: "Nếu lương tôi tăng lên 30 triệu và tôi mua ở TP.HCM thì sao?",
     timestamp: "09:44",
   },
   {
     id: "m4",
     role: "assistant",
     extractedFields: [
-      { label: "Tình trạng hôn nhân", value: "Độc thân nuôi con dưới tuổi thành niên" },
-      { label: "Thu nhập", value: "18.000.000 đ/tháng (giữ nguyên)" },
+      { label: "Thu nhập", value: "30.000.000 đ/tháng (cập nhật)" },
+      { label: "Nơi cư trú", value: "TP. Hồ Chí Minh" },
     ],
     reasoningSteps: [
-      { label: "Cập nhật nhóm đối tượng: độc thân nuôi con", status: "done" },
-      { label: "Tra mức trần thu nhập áp dụng cho nhóm này", status: "done" },
-      { label: "Phát hiện 2 văn bản quy định khác thời điểm cho nhóm này", status: "done" },
-      { label: "Xác định văn bản đang áp dụng tại hôm nay", status: "active" },
+      { label: "Cập nhật thu nhập: 30 triệu đ/tháng", status: "done" },
+      { label: "So với trần trung ương nhóm độc thân: 25 triệu — đã vượt", status: "done" },
+      { label: "Kiểm tra quyền điều chỉnh của UBND cấp tỉnh (Điều 30 k1 điểm d)", status: "done" },
+      { label: "Tra quyết định hệ số của TP. Hồ Chí Minh", status: "active" },
     ],
     result: {
       verdict: "insufficient_data",
       headline: "CHƯA ĐỦ CĂN CỨ ĐỂ KẾT LUẬN CHẮC CHẮN",
       reason:
-        "Mức trần thu nhập áp dụng cho nhóm 'độc thân nuôi con' hiện có 2 văn bản khác thời điểm — hệ thống chưa xác nhận được văn bản nào đang áp dụng. Chúng tôi không đoán để tránh cho bạn một câu trả lời có thể sai.",
-      citations: [citationDieu30_261, citationDieu30_136],
-      conflictingCitations: [citationDieu30_261, citationDieu30_136],
-      suggestion: "Đăng ký nhận thông báo khi có xác nhận chính thức?",
+        "Thu nhập của bạn cao hơn mức trần chung của cả nước (25 triệu/tháng), nhưng UBND cấp tỉnh có quyền quyết định hệ số điều chỉnh nâng mức trần này theo mức sống địa phương. Hệ thống chưa có dữ liệu quyết định của TP. Hồ Chí Minh nên chưa thể kết luận bạn không đủ điều kiện.",
+      threshold: {
+        label: "Thu nhập của bạn so với ngưỡng trung ương (Độc thân chưa kết hôn)",
+        userValue: 30,
+        limitValue: 25,
+        unit: "triệu đ/tháng",
+      },
+      citations: [citationDieu30_136, citationDieu30_k1d],
+      suggestion:
+        "Bạn nên liên hệ Sở Xây dựng TP. Hồ Chí Minh để hỏi mức trần áp dụng tại địa phương.",
     },
     timestamp: "09:44",
   },

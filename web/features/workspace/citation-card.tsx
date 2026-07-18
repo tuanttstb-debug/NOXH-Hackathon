@@ -43,13 +43,31 @@ export function CitationCard({ citation, onOpenDetail, compact }: CitationCardPr
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => onOpenDetail?.(citation)}
-        className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-      >
-        Xem chi tiết <ExternalLink className="h-3 w-3" />
-      </button>
+      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+        {onOpenDetail && (
+          <button
+            type="button"
+            onClick={() => onOpenDetail(citation)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Xem chi tiết
+          </button>
+        )}
+
+        {/* docs/14_BACKLOG.md P1: dẫn thẳng tới văn bản gốc, không chỉ nêu tên điều/khoản —
+            người dùng phải tự kiểm chứng được kết luận, đúng nguyên tắc "Citation First". */}
+        {citation.sourceUrl && (
+          <a
+            href={citation.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            Văn bản gốc <ExternalLink className="h-3 w-3" aria-hidden />
+            <span className="sr-only">(mở tab mới)</span>
+          </a>
+        )}
+      </div>
     </div>
   );
 }

@@ -23,7 +23,17 @@ Khi làm việc trong dự án này, AI đóng đồng thời vai trò CPO, Ente
 ## Bản đồ tài liệu (không lặp nội dung — chỉ trỏ)
 - `docs/` (16 file, 00–15): tầng Business/Product/Architecture khái niệm. Mục lục đầy đủ: `00_MUC_LUC.md`.
 - `knowledge/` (24 file): tầng tri thức chuyên sâu để build — hồ sơ từng văn bản luật (`phap_ly/`), ontology chi tiết (`ontology/`), đặc tả 5 agent (`agents/`), prompt nháp (`prompts/`), test case (`evaluation/`), dataset rỗng chờ dữ liệu thật (`datasets/`). Mục lục: `../knowledge/README.md`.
+- `docs/features/` (2 file, thêm 2026-07-18): module mở rộng đề xuất, chưa build — `PROJECT_INTELLIGENCE.md` và `PUBLIC_DISCOURSE_FILTER.md`. Xem cảnh báo phụ thuộc chéo ở mục "Đề xuất mở rộng" bên dưới.
+- `docs/technical/` (10 file, 01–10, thêm 2026-07-18): Technical Discovery cho riêng `PROJECT_INTELLIGENCE.md` — không viết code, chỉ discovery. Đọc `10_TECHNICAL_DECISION.md` nếu cần khuyến nghị nhanh.
 - Lịch sử: bộ tài liệu ban đầu là các file phẳng (00,01,02,10-13,_index.md) đã được thay thế hoàn toàn bằng cấu trúc `docs/` + `knowledge/` hiện tại — các file phẳng cũ đã xoá, không còn tồn tại.
+
+## Đề xuất mở rộng (DECISION treo — chưa build, cảnh báo phụ thuộc chéo)
+2 module mở rộng đã có tài liệu thiết kế nhưng **0% code**, thêm vào ngày 2026-07-18, sau khi Eligibility Checker P0 (mục tiêu ban đầu, xem bảng trên) vẫn chưa hoàn thành:
+
+1. **Project Intelligence** (`features/PROJECT_INTELLIGENCE.md`) — báo cáo tổng hợp đa nguồn cho 1 dự án NOXH cụ thể. Đã qua Technical Discovery đầy đủ (`technical/01`–`10`) — quyết định kiến trúc chính: **không dùng Postgres/DB mới, dùng file JSON/TS tĩnh** (đi ngược đề xuất mặc định của BRD, lý do: repo hiện có 0% backend). Phụ thuộc cứng vào Legal KG của Eligibility Checker cho khối "Pháp lý".
+2. **Public Discourse Filter** (`features/PUBLIC_DISCOURSE_FILTER.md`) — phát hiện & gắn cờ claim sai lệch/lan nhanh về chính sách NOXH trên mạng xã hội, KHÔNG tự động xác minh/publish (chỉ định tuyến cho người xem). Tài liệu tự rút gọn scope cho "36h còn lại" (OPEN QUESTION: có cùng mốc giờ hackathon không — xem `00_MUC_LUC.md`). **Dùng chung node `Project`/`HousingProject` với Project Intelligence** (không tạo node trùng) và cần Legal KG để validate `CLAIM_CITES_DOCUMENT`.
+
+**Cảnh báo quan trọng nhất**: cả 3 sáng kiến (Eligibility Checker, Project Intelligence, Public Discourse Filter) giờ đang cùng tồn tại ở trạng thái tài liệu/thiết kế, và 2 module sau **phụ thuộc dữ liệu lẫn nhau lẫn vào module đầu** (Legal KG) — chưa module nào có tầng dữ liệu thật. Nguyên tắc xuyên suốt dự án ("không mở rộng P1/P2 khi P0 chưa chạy đúng", `docs/14_BACKLOG.md`) áp dụng nguyên vẹn ở đây: **Eligibility Checker P0 vẫn là ưu tiên build đầu tiên** — 2 module mở rộng là tài liệu tham khảo cho giai đoạn sau, không phải việc song song.
 
 ## Rủi ro trọng yếu nhất (xem đầy đủ ở `12_QUAN_LY_RUI_RO.md`)
 Khung pháp lý NOXH bị sửa đổi chồng lấp (NĐ 54/2026 và NĐ 136/2026 cùng sửa Điều 30 NĐ 100/2024/NĐ-CP nhưng khác khía cạnh nội dung). Toàn bộ dữ liệu pháp lý hiện tại trong `knowledge/phap_ly/` ở trạng thái **"đang xác minh"** (chưa đối chiếu văn bản gốc/Công báo) — đây là điểm chặn lớn nhất trước khi coi Knowledge Graph đáng tin cậy.

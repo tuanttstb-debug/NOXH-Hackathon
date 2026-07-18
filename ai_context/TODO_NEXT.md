@@ -1,28 +1,50 @@
 # TODO_NEXT — NOXH Copilot
 
-> Ưu tiên cho phiên làm việc tiếp theo. Tổng hợp từ `../docs/16_DESIGN_REVIEW.md` (5 khuyến nghị hành động), `../docs/14_BACKLOG.md` (Definition of Done P0), và các OPEN QUESTION đang chặn tiến độ. Cập nhật gần nhất: **2026-07-17**.
+> Ưu tiên cho phiên làm việc tiếp theo. Tổng hợp từ `../docs/16_DESIGN_REVIEW.md` (5 khuyến nghị hành động), `../docs/14_BACKLOG.md` (Definition of Done P0), và các OPEN QUESTION đang chặn tiến độ. Cập nhật gần nhất: **2026-07-18**.
+
+> **Cảnh báo scope (2026-07-18)**: 2 module mở rộng đã có tài liệu thiết kế xong — Project Intelligence và Public Discourse Filter (xem `PROJECT_STATE.md` mục "Module mở rộng đề xuất"). **P0 bên dưới KHÔNG đổi** — cả 2 module mới đứng sau P0, không song song. Cả hai đều phụ thuộc dữ liệu Legal KG mà P0 #1 chịu trách nhiệm hiện thực hoá lần đầu.
 
 ## P0 — Chặn demo, làm trước tiên
-1. **Build pipeline AI Agent thật (dù thô)** — hiện tại 0% có lệnh gọi LLM nào. Đây là khoảng cách lớn nhất giữa tài liệu và sản phẩm ("Potemkin AI" risk, `../docs/16_DESIGN_REVIEW.md` mục AI-Native). Bắt đầu với 1 luồng end-to-end đơn giản nhất: nhận input hồ sơ → truy vấn dữ liệu pháp lý (`knowledge/phap_ly/`, dù còn "đang xác minh") → gọi LLM với grounding → trả 1 trong 3 verdict kèm trích dẫn. Nếu kiến trúc 4-agent (ADR-03 đề xuất 1-agent) không khả thi trong thời gian còn lại, giảm xuống 1–2 bước gộp và ghi lại lý do (cập nhật `../docs/13_QUYET_DINH_KIEN_TRUC.md`).
-2. **Quyết định provider LLM + cách gọi API** — chưa có ràng buộc từ BTC (`../docs/13_QUYET_DINH_KIEN_TRUC.md` mục cuối), chưa chọn cụ thể. Cần: chọn model, thiết lập API key (biến môi trường, KHÔNG hard-code), viết prompt thật dựa trên `knowledge/prompts/*.md` (hiện là bản nháp).
-3. **Nối frontend đã dựng với backend/API thật** — 3 màn hình hiện dùng 100% mock data (`web/mock/`). Cần route API (Next.js Route Handler hoặc backend riêng) để `use-eligibility-chat.ts` gọi pipeline thật thay vì trả dữ liệu tĩnh.
-4. **Viết ≥2 test case đối kháng (red-team)** bổ sung cho `knowledge/evaluation/eligibility_test_cases.md` (hiện chỉ có kịch bản thuận) — ví dụ: người dùng năn nỉ AI trả lời chắc chắn khi thiếu dữ liệu. Bằng chứng Safety mạnh nhất nếu giám khảo hỏi khó.
-5. **Rehearsal demo ≥1 lần với dữ liệu thật** theo `../docs/11_KICH_BAN_DEMO.md` (3 kịch bản: Đủ điều kiện / Không đủ / Thiếu thông tin), có kế hoạch dự phòng khi lỗi. Hiện tại: 0 lần.
-6. **Chạy `npm run lint`** trong `web/` ít nhất 1 lần trước khi coi bất kỳ màn hình nào là hoàn thiện (tự ghi nhận nợ trong `web/README.md`).
+1. ✅ **Build pipeline AI Agent thật** — xong + **verify với LLM thật 2026-07-18**. `web/lib/eligibility/{legal-kg,reasoner,llm}.ts` + `web/app/api/eligibility/route.ts`. Đã chạy thật qua FPT AI Marketplace (model `SaoLa3.1-medium`) cho cả 4 test case chính thức + 2 red-team — tất cả PASS. Xem chi tiết verify trong `SESSION_HANDOVER.md` Session 5.
+2. ✅ **Quyết định provider LLM + cách gọi API** — FPT AI Marketplace, endpoint đã xác minh thật: `POST {MKP_API_BASE}/v1/chat/completions`, `GET {MKP_API_BASE}/v1/models`. Model chốt: `SaoLa3.1-medium` (model tiếng Việt, trả `message.content` sạch). **Phát hiện quan trọng:** một số model khác trên cùng marketplace (DeepSeek-V4-Flash, GLM-5.2) là "reasoning model" — mặc định trả `content: null` và dồn hết vào `reasoning_content`; code đã có fallback (`llm.ts`) để không gãy nếu đổi model.
+3. ✅ **Nối frontend với backend/API thật** — `use-eligibility-chat.ts` gọi `/api/eligibility`, interface hook không đổi.
+4. ✅ **Viết ≥2 test case đối kháng (red-team)** — xong 2026-07-18, thêm TC-05/TC-06 vào `knowledge/evaluation/eligibility_test_cases.md`, **đã chạy thật và PASS cả 2** (ép trả lời chắc chắn khi thiếu dữ liệu; yêu cầu bỏ qua điều kiện loại trừ nhà ở) — verdict không bị ảnh hưởng bởi áp lực/yêu cầu trong câu hỏi, đúng thiết kế (Compose chỉ diễn giải, không đổi kết luận).
+5. 🟡 **Rehearsal demo** — đã verify đầy đủ ở tầng API/backend (curl trực tiếp `/api/eligibility`, không qua trình duyệt) cho cả 6 kịch bản (TC-01→06). **Chưa rehearsal qua giao diện `/eligibility` thật trong trình duyệt** — cần người dùng tự mở `npm run dev` và click qua UI ít nhất 1 lần trước demo thật, vì AI không có công cụ trình duyệt trong phiên này để tự làm bước đó.
+6. ✅ **Chạy `npm run lint`** — xong 2026-07-18, 0 warning/error.
+
+7. ✅ **Đối chiếu toàn văn văn bản pháp lý gốc** — xong 2026-07-18. Phát hiện và sửa 2 ngưỡng SAI LUẬT (30tr→35tr, 40tr→50tr), bác bỏ "RISK trọng yếu nhất" (NĐ 54 và NĐ 136 sửa 2 khoản khác nhau, không chồng lấp), viết lại TC-04 theo vùng bất định có thật (hệ số điều chỉnh cấp tỉnh — Điều 30 k1 điểm d). Chạy lại 6/6 test case với LLM thật: PASS.
+
+### Việc ngay tiếp theo
+- **Bạn** mở `web/`, chạy `npm run dev`, tự tay thử qua UI `/eligibility` ít nhất 1 lần (API đã verify đúng, nhưng chưa ai xác nhận trải nghiệm hiển thị thật trên UI — reasoningSteps, citation card, threshold bar...). **Kịch bản đáng thử nhất:** nhập cùng một hồ sơ 2 lần, một lần có nêu tỉnh và một lần không — verdict phải đổi (TC-02 vs TC-04).
+- Khuyến nghị **rotate lại `MKP_API_KEY`** trên FPT AI Marketplace dashboard — key hiện tại đã bị dán trực tiếp vào chat nên coi như đã lộ, dù đã nằm trong `web/.env.local` (gitignored, không commit).
+- **Sửa `docs/12_QUAN_LY_RUI_RO.md`** — vẫn ghi rủi ro chồng lấp NĐ 54/136 là rủi ro trọng yếu chưa xử lý; thực tế đã bác bỏ bằng toàn văn. Tài liệu này chưa được cập nhật theo (chưa sửa vì nằm ngoài phạm vi được yêu cầu).
+- **Cân nhắc:** `docs/11_KICH_BAN_DEMO.md` Kịch bản 3 mô tả TC-04 theo bản cũ (chồng lấp văn bản) — cần viết lại theo kịch bản hệ số cấp tỉnh trước khi demo.
+
+## Việc đang chờ NGƯỜI DÙNG (chặn tiến độ, 2026-07-18)
+1. **Dữ liệu 2–3 dự án NOXH có nguồn** → thả vào `web/lib/Projects/`, format tự do, theo `DU_LIEU_CAN_CUNG_CAP.md`. Toàn bộ pipeline Project Intelligence đã sẵn sàng, thả dữ liệu vào là có report.
+2. **30–50 bài đăng mạng xã hội thật** cho Public Discourse Filter (nếu vẫn muốn demo module này). Pipeline đã chạy được, hiện chỉ có fixture giả lập không dùng để demo được.
+3. **P0 #5** — click qua UI `/eligibility` trong trình duyệt.
+4. **Rotate `MKP_API_KEY`**.
 
 ## P1 — Nếu còn thời gian sau P0
 - Hiển thị link tới văn bản gốc trong kết quả (không chỉ tên điều/khoản) — `../docs/14_BACKLOG.md`.
 - Màn hình 4 (Legal Search) — bước tiếp theo được ghi nhận ở `../docs/00_PROJECT_MEMORY.md`.
 - Giao diện chỉn chu hơn cho 3 màn hình đã dựng (không phải trọng tâm chấm điểm).
-- `git init` cho toàn bộ dự án nếu người dùng muốn có version control/rollback an toàn — hiện KHÔNG phải git repo (xem `TECH_DEBT.md`). Chưa tự ý làm — cần hỏi người dùng trước.
+- **Project Intelligence** (`../docs/features/PROJECT_INTELLIGENCE.md`) — chỉ bắt đầu sau khi P0 chạy đúng. Xem `../docs/technical/10_TECHNICAL_DECISION.md` cho khuyến nghị "nếu chỉ còn 12h" trước khi bắt đầu.
+- **Public Discourse Filter** (`../docs/features/PUBLIC_DISCOURSE_FILTER.md`) — chỉ bắt đầu sau khi P0 chạy đúng VÀ đã trả lời được OPEN QUESTION mốc giờ "36h" ở `../docs/00_MUC_LUC.md`. Cần dữ liệu mẫu 30-50 bài tuyển thủ công trước khi code (mục 10 trong tài liệu gốc).
 
 ## OPEN QUESTION cần người dùng trả lời (chặn quyết định, không tự suy diễn)
-Đầy đủ ở `../docs/00_MUC_LUC.md` mục "Cần bạn xác nhận sớm nhất". Ưu tiên hỏi lại nếu bắt đầu phiên mới:
-1. Toàn văn hợp nhất mới nhất NĐ 100/2024/NĐ-CP — chưa có thì rủi ro trích dẫn sai điều khoản hết hiệu lực (chặn P0 #1).
-2. Mốc thời gian 48h chính xác + rubric chấm điểm — ảnh hưởng mức độ ưu tiên P0 vs P1.
-3. Agent có cần hỏi lại người dùng khi thiếu thông tin (multi-turn) hay chỉ báo và dừng — ảnh hưởng thiết kế pipeline P0 #1.
-4. Thời lượng demo trước giám khảo — ảnh hưởng kịch bản `11_KICH_BAN_DEMO.md`.
-5. Mức trần thu nhập nhóm "độc thân nuôi con"/"đã kết hôn" có bị NĐ 136/2026 sửa hay giữ theo NĐ 261/2025 — ảnh hưởng độ đúng của Eligibility Checker.
+Đầy đủ ở `../docs/00_MUC_LUC.md` mục "Cần bạn xác nhận sớm nhất".
+
+**✅ Đã trả lời 2026-07-18 bằng toàn văn văn bản gốc tại `web/lib/Legal/`:**
+- ~~Toàn văn hợp nhất mới nhất NĐ 100/2024/NĐ-CP~~ — đã có đủ chuỗi sửa đổi.
+- ~~Mức trần nhóm "độc thân nuôi con"/"đã kết hôn" có bị NĐ 136/2026 sửa không~~ — **CÓ**, sửa cả 3 nhóm (25/35/50tr). Code trước đó sai, đã sửa.
+
+**Còn treo — ưu tiên hỏi lại nếu bắt đầu phiên mới:**
+1. Mốc thời gian 48h chính xác + rubric chấm điểm — ảnh hưởng mức độ ưu tiên P0 vs P1.
+2. Agent có cần hỏi lại người dùng khi thiếu thông tin (multi-turn) hay chỉ báo và dừng.
+3. Thời lượng demo trước giám khảo — ảnh hưởng kịch bản `11_KICH_BAN_DEMO.md`.
+4. Có nên thu thập quyết định hệ số điều chỉnh của một vài UBND tỉnh (TP.HCM, Hà Nội, Bình Dương) để điền vào `provincialCoefficients` không? Nếu có, TC-04 sẽ ra verdict chắc chắn cho các tỉnh đó và "Thiếu thông tin" chỉ còn cho tỉnh chưa có dữ liệu — thể hiện hệ thống mở rộng được. **Chưa làm vì chưa có nguồn quyết định thật.**
 
 ## Nguyên tắc khi làm P0
 Không mở rộng sang P1/P2 khi P0 chưa chạy đúng và có trích dẫn thật từ đầu đến cuối (`../docs/14_BACKLOG.md`). Không viết thêm tài liệu mới trong `docs/`/`knowledge/` trừ khi cần thiết để build P0 — giá trị biên của tài liệu đã giảm dần theo kết luận `../docs/16_DESIGN_REVIEW.md`.

@@ -33,6 +33,12 @@ function buildSummaryText(result: ResultBlock): string {
     lines.push("Căn cứ pháp lý:");
     result.citations.forEach((c) => {
       lines.push(`- ${c.articleLabel} — ${c.documentTitle} (${c.documentCode})`);
+      lines.push(
+        `  Hiệu lực từ ${new Date(c.effectiveDate).toLocaleDateString("vi-VN")}` +
+          (c.confidence === "verified" ? " · đã đối chiếu văn bản gốc" : " · ĐANG XÁC MINH")
+      );
+      // Người cầm bản tóm tắt này đi nộp hồ sơ phải tự kiểm chứng được — luôn kèm link gốc.
+      if (c.sourceUrl) lines.push(`  Văn bản gốc: ${c.sourceUrl}`);
     });
   }
 
@@ -44,7 +50,10 @@ function buildSummaryText(result: ResultBlock): string {
   lines.push("");
   lines.push("—");
   lines.push(
-    "Lưu ý: kết quả tạo tự động từ dữ liệu đang trong quá trình xác minh, chỉ mang tính tham khảo, không thay thế xác nhận từ cơ quan có thẩm quyền."
+    "Lưu ý: kết quả được tạo tự động, chỉ mang tính tham khảo và KHÔNG thay thế xác nhận từ cơ quan có thẩm quyền."
+  );
+  lines.push(
+    "Mức trần thu nhập nêu trên là mức theo quy định trung ương. UBND cấp tỉnh có quyền quyết định hệ số điều chỉnh riêng (NĐ 136/2026, Điều 30 khoản 1 điểm d) — hãy hỏi Sở Xây dựng nơi có dự án để biết mức áp dụng thực tế."
   );
   lines.push(`Xuất lúc: ${new Date().toLocaleString("vi-VN")}`);
 

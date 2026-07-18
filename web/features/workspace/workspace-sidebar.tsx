@@ -26,6 +26,16 @@ const SKILL_ICON: Record<string, LucideIcon> = {
 };
 
 /**
+ * Chỉ skill nào đã có màn hình thật mới điều hướng được. Skill chưa dựng hiển thị rõ là
+ * "chưa có" thay vì trông như bấm được rồi không xảy ra gì — nút giả đúng là dạng
+ * "Potemkin" mà docs/16_DESIGN_REVIEW.md cảnh báo.
+ */
+const SKILL_ROUTE: Record<string, string | undefined> = {
+  eligibility: "/eligibility",
+  search: "/legal",
+};
+
+/**
  * Rail điều hướng cho Workspace Mode (docs/UI/02_INFORMATION_ARCHITECTURE.md) — icon-first,
  * mở rộng khi cần, khác hẳn sidebar liệt kê module của tài liệu tham khảo TPBank
  * (xem docs/UI/01_UI_REVIEW.md phần Navigation).
@@ -71,26 +81,48 @@ export function WorkspaceSidebar() {
         <ul className="space-y-1">
           {quickSkills.map((skill) => {
             const Icon = SKILL_ICON[skill.icon];
+            const route = SKILL_ROUTE[skill.id];
+            const inner = (
+              <>
+                <Icon
+                  className={cn("h-4 w-4 shrink-0", route ? "text-primary" : "text-muted-foreground/60")}
+                  aria-hidden
+                />
+                {!collapsed && (
+                  <span className="min-w-0">
+                    <span className="block leading-tight">
+                      {skill.label}
+                      {!route && (
+                        <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                          · chưa có
+                        </span>
+                      )}
+                    </span>
+                    <span className="block text-[11px] leading-tight text-muted-foreground">
+                      {skill.description}
+                    </span>
+                  </span>
+                )}
+              </>
+            );
+
+            const className = cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
+              route ? "text-foreground/90 hover:bg-muted" : "cursor-not-allowed text-muted-foreground/70",
+              collapsed && "justify-center px-0"
+            );
+
             return (
               <li key={skill.id}>
-                <button
-                  type="button"
-                  title={skill.label}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-foreground/90 transition-colors hover:bg-muted",
-                    collapsed && "justify-center px-0"
-                  )}
-                >
-                  <Icon className="h-4 w-4 shrink-0 text-primary" />
-                  {!collapsed && (
-                    <span>
-                      <span className="block leading-tight">{skill.label}</span>
-                      <span className="block text-[11px] leading-tight text-muted-foreground">
-                        {skill.description}
-                      </span>
-                    </span>
-                  )}
-                </button>
+                {route ? (
+                  <Link href={route} title={skill.label} className={className}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <span title={`${skill.label} — chưa triển khai`} className={className} aria-disabled>
+                    {inner}
+                  </span>
+                )}
               </li>
             );
           })}
