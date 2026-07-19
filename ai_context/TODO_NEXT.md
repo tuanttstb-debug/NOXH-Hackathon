@@ -23,21 +23,26 @@
   1. **Bổ sung nguồn Facebook/Threads** qua `web/data/discourse/manual-posts.json` (dán tay 30–50 bài) — đây là nơi tin sai lệch NOXH thực sự sống, và là hướng duy nhất có khả năng sinh P1 thật.
   2. **Trình bày trung thực**: "quét 216 bài, không phát hiện tin sai lệch lan nhanh" là **kết quả hợp lệ**, kèm bằng chứng rule hoạt động. Trung thực hơn là ép dữ liệu ra P1.
   3. Cắt module khỏi demo nếu thời gian còn lại eo hẹp.
-- Khuyến nghị **rotate lại `MKP_API_KEY`** trên FPT AI Marketplace dashboard — key hiện tại đã bị dán trực tiếp vào chat nên coi như đã lộ, dù đã nằm trong `web/.env.local` (gitignored, không commit).
-- **Bộ ảnh `EVD/` đã mất** — thư mục chỉ còn 3 ảnh rehearsal của Session 9. 20 ảnh gốc `EVD/01`–`20` mà `PROJECT_STATE.md` tham chiếu không còn tồn tại (chưa từng commit nên không khôi phục được từ git). Nếu cần cho bài demo/nộp bài, chạy lại `web/screenshot.mjs` — lưu ý script trỏ `localhost:3001` và cần Chrome mở sẵn debug port 9222.
+- Khuyến nghị **rotate lại `MKP_API_KEY`** trên FPT AI Marketplace dashboard — key hiện tại đã bị dán trực tiếp vào chat nên coi như đã lộ, dù đã nằm trong `web/.env.local` (gitignored, không commit). **Việc này treo từ Session 5, chưa làm.**
+- **`favicon.ico` đang 404** — tiểu tiết nhưng giám khảo mở tab sẽ thấy.
 
-## Việc đang chờ NGƯỜI DÙNG (chặn tiến độ, 2026-07-18)
-1. **Dữ liệu 2–3 dự án NOXH có nguồn** → thả vào `web/lib/Projects/`, format tự do, theo `DU_LIEU_CAN_CUNG_CAP.md`. Toàn bộ pipeline Project Intelligence đã sẵn sàng, thả dữ liệu vào là có report.
-2. **30–50 bài đăng mạng xã hội thật** cho Public Discourse Filter (nếu vẫn muốn demo module này). Pipeline đã chạy được, hiện chỉ có fixture giả lập không dùng để demo được.
-3. ~~**P0 #5** — click qua UI `/eligibility` trong trình duyệt~~ → ✅ xong (Session 9, tự động hoá bằng `verify-ui-rehearsal.mjs`).
-4. **Rotate `MKP_API_KEY`**.
+## Việc đang chờ NGƯỜI DÙNG (cập nhật 2026-07-19)
+1. **Dữ liệu 2–3 dự án NOXH có nguồn** → thả vào `web/lib/Projects/` theo `DU_LIEU_CAN_CUNG_CAP.md`. Pipeline Project Intelligence đã sẵn sàng, thả dữ liệu vào là có report. **Đây là màn hình duy nhất còn rỗng.**
+2. **Bài mạng xã hội thật cho Public Discourse Filter** — xem hướng dẫn đầy đủ ở `web/data/discourse/HUONG_DAN_THEM_BAI.md`. ⚠️ Muốn có P1 phải gom **≥5 bài cùng một claim, trải trên ≥2 kênh**; gom bài lẻ tẻ mỗi bài một ý sẽ không bao giờ ra P1 dù thu bao nhiêu.
+3. **Rotate `MKP_API_KEY`**.
+4. **Quyết định số phận Public Discourse Filter** (3 hướng ở mục trên) — chưa trả lời.
 
-## P1 — Nếu còn thời gian sau P0
-- Hiển thị link tới văn bản gốc trong kết quả (không chỉ tên điều/khoản) — `../docs/14_BACKLOG.md`.
-- Màn hình 4 (Legal Search) — bước tiếp theo được ghi nhận ở `../docs/00_PROJECT_MEMORY.md`.
-- Giao diện chỉn chu hơn cho 3 màn hình đã dựng (không phải trọng tâm chấm điểm).
-- **Project Intelligence** (`../docs/features/PROJECT_INTELLIGENCE.md`) — chỉ bắt đầu sau khi P0 chạy đúng. Xem `../docs/technical/10_TECHNICAL_DECISION.md` cho khuyến nghị "nếu chỉ còn 12h" trước khi bắt đầu.
-- **Public Discourse Filter** (`../docs/features/PUBLIC_DISCOURSE_FILTER.md`) — chỉ bắt đầu sau khi P0 chạy đúng VÀ đã trả lời được OPEN QUESTION mốc giờ "36h" ở `../docs/00_MUC_LUC.md`. Cần dữ liệu mẫu 30-50 bài tuyển thủ công trước khi code (mục 10 trong tài liệu gốc).
+## P1 — trạng thái thật (cập nhật 2026-07-19)
+- ~~Link tới văn bản gốc trong kết quả~~ → ✅ xong Session 7.
+- ~~Màn hình 4 (Legal Search)~~ → ✅ xong Session 7, route `/legal`.
+- ~~Project Intelligence~~ → ✅ code xong Session 7, route `/projects`, **chờ dữ liệu**.
+- ~~Public Discourse Filter~~ → ✅ pipeline + crawler xong (Session 7–9). **Chưa có dashboard UI** — chưa dựng vì chưa có dữ liệu sinh được P1.
+- Còn lại: **dashboard UI cho Discourse Filter** (chỉ dựng sau khi có dữ liệu thật), giao diện chỉn chu hơn (không phải trọng tâm chấm điểm).
+
+## Nợ kỹ thuật đáng làm tiếp (chi tiết ở `TECH_DEBT.md`)
+- **#13** — NĐ 95/2024 chưa nạp được vào Legal KG: PDF scan ảnh, cần OCR tiếng Việt.
+- **#7** — chưa có unit test cho `reasoner.ts` (logic thuần, chạy nhanh, không cần LLM — đáng test nhất); chưa phủ `/legal`, `/projects`, `/api/discourse`; chưa có CI.
+- **#11** — `redactPii()` chỉ chạy lúc phân tích, crawler vẫn ghi text thô xuống đĩa.
 
 ## OPEN QUESTION cần người dùng trả lời (chặn quyết định, không tự suy diễn)
 Đầy đủ ở `../docs/00_MUC_LUC.md` mục "Cần bạn xác nhận sớm nhất".

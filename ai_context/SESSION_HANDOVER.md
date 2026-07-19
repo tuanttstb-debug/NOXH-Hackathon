@@ -2,6 +2,21 @@
 
 > Nhật ký từng phiên làm việc, **mới nhất ở trên cùng**. Đọc file này đầu tiên khi bắt đầu phiên mới, sau đó mới đọc `PROJECT_STATE.md` (trạng thái hiện tại) và `TODO_NEXT.md` (việc cần làm tiếp). File này KHÔNG thay thế `../docs/00_PROJECT_MEMORY.md` (neo trí nhớ nghiệp vụ/kiến trúc) — hai file bổ sung cho nhau: `00_PROJECT_MEMORY.md` trả lời "dự án là gì, đã quyết định gì", file này trả lời "phiên trước đã làm gì, dừng ở đâu".
 
+## Session 15 — 2026-07-19 (Hướng dẫn thêm dữ liệu Discourse Filter + bàn giao)
+
+**Đã làm:** viết `web/data/discourse/HUONG_DAN_THEM_BAI.md` — hướng dẫn dán bài Facebook/TikTok/diễn đàn và thêm nguồn RSS. Nội dung trích **trực tiếp từ quy tắc trong code**, không viết theo trí nhớ.
+
+**3 điểm hướng dẫn nhấn mạnh (đều là chỗ dễ mất công nhất):**
+1. **Bản ghi hỏng bị loại ÂM THẦM** — thiếu 1 trong 5 trường bắt buộc hoặc sai tên `channel` là mất bài, chỉ hiện ở `stats.invalidDropped`. Phải kiểm số đó sau mỗi lần chạy.
+2. **Hai bộ lọc âm thầm** (từ khoá + chất lượng) đã loại **153/216 bài (71%)** ở lần chạy thật. Bài nói về NOXH nhưng dùng từ khác ("nhà giá rẻ cho công nhân", tên dự án) sẽ bị loại.
+3. **Điều kiện thật để sinh P1**: ≥5 bài **cùng một claim**, **trải trên ≥2 kênh**. Gom bài lẻ tẻ mỗi bài một ý **không bao giờ** ra P1 — đây là lý do 216 bài thật cho 0 P1 dù rule hoạt động đúng.
+
+**Đã dặn rõ trong tài liệu:** đừng bịa bài để ép ra P1; "0 P1" trên dữ liệu thật là kết quả hợp lệ và trình bày trung thực thuyết phục hơn.
+
+**Dọn `TODO_NEXT.md`** — file này lỗi thời từ Session 10: vẫn ghi "bộ ảnh EVD đã mất" (giờ có 12 ảnh do test sinh), "chỉ có fixture giả lập" (giờ có 205 bình luận thật), và liệt kê Legal Search / Project Intelligence / link văn bản gốc như việc **chưa làm** trong khi cả 3 đã xong từ Session 7.
+
+---
+
 ## Session 14 — 2026-07-19 (Xử lý TECH_DEBT #12 — phân biệt MUA / THUÊ MUA / THUÊ)
 
 **Yêu cầu:** xử lý nốt TECH_DEBT #12.
